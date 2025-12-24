@@ -1,0 +1,19 @@
+package com.PTU;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+@EnableCaching//启动缓存功能
+@SpringBootApplication
+@EnableTransactionManagement //开启注解方式的事务管理
+@Slf4j
+@EnableScheduling//启动定时任务功能
+public class ApiApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(ApiApplication.class, args);
+        log.info("server started");
+    }
+}
