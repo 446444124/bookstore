@@ -37,16 +37,19 @@
 		<jjwt>0.9.1</jjwt>
 		<jaxb-api>2.3.1</jaxb-api>
 		<poi>3.16</poi>
+		<mybatis.plus>3.5.2</mybatis.plus>
 	</properties>
 
 	<dependencyManagement>
 		<dependencies>
-			<dependency>
-				<groupId>org.mybatis.spring.boot</groupId>
-				<artifactId>mybatis-spring-boot-starter</artifactId>
-				<version>${mybatis.spring}</version>
-			</dependency>
 
+			<!-- MyBatis-Plus -->
+			<dependency>
+				<groupId>com.baomidou</groupId>
+				<artifactId>mybatis-plus-boot-starter</artifactId>
+				<version>${mybatis.plus}</version> <!-- 请使用最新稳定版本 -->
+			</dependency>
+			<!-- Lombok -->
 			<dependency>
 				<groupId>org.projectlombok</groupId>
 				<artifactId>lombok</artifactId>
