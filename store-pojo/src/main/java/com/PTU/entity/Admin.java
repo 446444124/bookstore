@@ -5,16 +5,13 @@ import lombok.Data;
 
 @Data
 @TableName("employee")
-public class Employee {
+public class Admin {
     private Long employeeId;
     private String empNo;
-    private String username;
     private String password;
     private String realName;
-    private String department;
     private String position;
     private String email;
     private String phone;
     private Integer status;
-    // 省略其他...
 }

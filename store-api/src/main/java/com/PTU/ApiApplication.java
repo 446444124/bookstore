@@ -14,6 +14,6 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 public class ApiApplication {
     public static void main(String[] args) {
         SpringApplication.run(ApiApplication.class, args);
-        log.info("server started");
+        log.info("bookstoreServer started(校园书店启动)");
     }
 }
