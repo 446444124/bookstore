@@ -20,12 +20,10 @@
 		<module>store-common</module>
 		<module>store-api</module>
 		<module>store-pojo</module>
-		<!--		<module>store-pojo</module>-->
-<!--		<module>store-server</module>-->
+
 	</modules>
 
 	<properties>
-		<mybatis.spring>2.2.0</mybatis.spring>
 		<lombok>1.18.20</lombok>
 		<fastjson>1.2.76</fastjson>
 		<commons.lang>2.6</commons.lang>
@@ -134,30 +132,15 @@
 	<build>
 		<plugins>
 			<plugin>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-maven-plugin</artifactId>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<source>8</source>
+					<target>8</target>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>
-	<repositories>
-		<repository>
-			<id>spring-snapshots</id>
-			<name>Spring Snapshots</name>
-			<url>https://repo.spring.io/snapshot</url>
-			<releases>
-				<enabled>false</enabled>
-			</releases>
-		</repository>
-	</repositories>
-	<pluginRepositories>
-		<pluginRepository>
-			<id>spring-snapshots</id>
-			<name>Spring Snapshots</name>
-			<url>https://repo.spring.io/snapshot</url>
-			<releases>
-				<enabled>false</enabled>
-			</releases>
-		</pluginRepository>
-	</pluginRepositories>
+
 
 </project>
