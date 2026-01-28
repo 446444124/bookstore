@@ -1,6 +1,7 @@
 package com.PTU.controller;
 
 import com.PTU.constant.JwtClaimsConstant;
+import com.PTU.dto.UserDTO;
 import com.PTU.dto.UserLoginDTO;
 import com.PTU.entity.User;
 import com.PTU.properties.JwtProperties;
@@ -57,7 +58,7 @@ public class UserController {
 
     @PostMapping("/register")
     @ApiOperation("用户注册")
-    public Result<UserLoginVO> register(@RequestBody User tuser){
+    public Result<UserLoginVO> register(@RequestBody UserDTO tuser){
         log.info("用户注册:{}",tuser);
         //注册
         userService.register(tuser);

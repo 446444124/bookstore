@@ -2,6 +2,7 @@ package com.PTU.service.impl;
 
 import com.PTU.constant.MessageConstant;
 import com.PTU.constant.StatusConstant;
+import com.PTU.dto.UserDTO;
 import com.PTU.dto.UserLoginDTO;
 import com.PTU.entity.User;
 import com.PTU.exception.AccountLockedException;
@@ -13,6 +14,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
@@ -55,7 +57,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public void register(User tuser) {
+    public void register(UserDTO tuser) {
         //1.判断学号是否已存在
         String studentId = tuser.getStudentId();
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
@@ -76,7 +78,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         //3.密码 加密存储
         tuser.setPassword(DigestUtils.md5DigestAsHex(tuser.getPassword().getBytes()));
+        //对象属性拷贝
+        User newuser = new User();
+        BeanUtils.copyProperties(tuser,newuser);
         //4.注册用户
-        this.save(tuser);
+        this.save(newuser);
     }
 }
