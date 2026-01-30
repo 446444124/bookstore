@@ -1,11 +1,11 @@
 package com.PTU.dto;
 
-import com.baomidou.mybatisplus.annotation.TableName;
+import io.swagger.annotations.ApiModel;
 import lombok.Data;
 
 // User实体类（学生）
 @Data
-@TableName("user")
+@ApiModel(description = "用户注册传递的数据模型")
 public class UserDTO {
     private Long userId;
     private String studentId;
