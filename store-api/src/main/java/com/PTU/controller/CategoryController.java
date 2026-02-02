@@ -63,30 +63,30 @@ public class CategoryController {
         return Result.success();
     }
 
-//    /**
-//     * 修改分类
-//     * @param categoryDTO
-//     * @return
-//     */
-//    @PutMapping
-//    @ApiOperation("修改分类")
-//    public Result<String> update(@RequestBody CategoryDTO categoryDTO){
-//        categoryService.update(categoryDTO);
-//        return Result.success();
-//    }
-//
-//    /**
-//     * 启用、禁用分类
-//     * @param status
-//     * @param id
-//     * @return
-//     */
-//    @PostMapping("/status/{status}")
-//    @ApiOperation("启用禁用分类")
-//    public Result<String> startOrStop(@PathVariable("status") Integer status, Long id){
-//        categoryService.startOrStop(status,id);
-//        return Result.success();
-//    }
+    /**
+     * 修改分类
+     * @param categoryDTO
+     * @return
+     */
+    @PutMapping
+    @ApiOperation("修改分类")
+    public Result<String> update(@RequestBody CategoryDTO categoryDTO){
+        categoryService.update(categoryDTO);
+        return Result.success();
+    }
+
+    /**
+     * 启用、禁用分类
+     * @param status
+     * @param id
+     * @return
+     */
+    @PostMapping("/status/{status}")
+    @ApiOperation("启用禁用分类")
+    public Result<String> startOrStop(@PathVariable("status") Integer status, Long id){
+        categoryService.startOrStop(status,id);
+        return Result.success();
+    }
 //
 //    /**
 //     * 根据类型查询分类

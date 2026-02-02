@@ -24,4 +24,17 @@ public interface CategoryService extends IService<Category> {
      * @return
      */
     PageResult pageQuery(CategoryPageQueryDTO categoryPageQueryDTO);
+
+    /**
+     * 修改分类
+     * @param categoryDTO
+     */
+    void update(CategoryDTO categoryDTO);
+
+    /**
+     * 启用、禁用分类
+     * @param status
+     * @param id
+     */
+    void startOrStop(Integer status, Long id);
 }

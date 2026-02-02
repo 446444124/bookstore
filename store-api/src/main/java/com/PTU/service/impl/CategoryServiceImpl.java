@@ -16,6 +16,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import java.time.LocalDateTime;
 
 @Service
 public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> implements CategoryService {
@@ -70,4 +71,25 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
         return new PageResult(page.getTotal(), page.getRecords());
     }
 
+
+    public void update(CategoryDTO categoryDTO) {
+        Category category = new Category();
+        BeanUtils.copyProperties(categoryDTO,category);
+
+        //设置修改时间、修改人
+        category.setUpdateTime(LocalDateTime.now());
+        //category.setUpdateUser(BaseContext.getCurrentId());
+
+        this.updateById(category);
+    }
+
+    public void startOrStop(Integer status, Long id) {
+        Category category = Category.builder()
+                .id(id)
+                .status(status)
+                .updateTime(LocalDateTime.now())
+                //.updateUser(BaseContext.getCurrentId())
+                .build();
+        this.updateById(category);
+    }
 }
