@@ -1,11 +1,12 @@
 package com.PTU.service.impl;
 
 import com.PTU.constant.MessageConstant;
+import com.PTU.constant.StatusConstant;
 import com.PTU.dto.BookAddDTO;
 import com.PTU.dto.BookPageQueryDTO;
-import com.PTU.entity.Admin;
 import com.PTU.entity.Book;
 import com.PTU.exception.BaseException;
+import com.PTU.exception.DeletionNotAllowedException;
 import com.PTU.mapper.BookMapper;
 import com.PTU.result.PageResult;
 import com.PTU.service.BookService;
@@ -14,6 +15,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 public class BookServiceImpl extends ServiceImpl<BookMapper, Book> implements BookService {
@@ -46,4 +49,25 @@ public class BookServiceImpl extends ServiceImpl<BookMapper, Book> implements Bo
         // 构建返回结果
         return new PageResult(page.getTotal(), page.getRecords());
     }
+
+    @Override
+    public void deleteBatch(List<Long> ids) {
+        //判断图书状态是否为起售状态
+        for (Long id : ids) {
+            Book book = this.getById(id);
+            if(book.getStatus() == StatusConstant.ENABLE){
+                throw new DeletionNotAllowedException(MessageConstant.BOOK_ON_SALE);
+            }
+        }
+        this.removeByIds(ids);
+    }
+
+    @Override
+    public void startOrStop(Integer status, Long id) {
+        Book book = new Book();
+        book.setStatus(status);
+        book.setId(id);
+        this.updateById(book);
+    }
+
 }

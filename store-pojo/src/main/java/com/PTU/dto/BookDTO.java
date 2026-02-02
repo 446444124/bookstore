@@ -1,25 +1,16 @@
-package com.PTU.entity;
+package com.PTU.dto;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import io.swagger.annotations.ApiModel;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-
-// Book实体类（图书）
+@ApiModel(description = "修改图书时传递的数据模型")
 @Data
-@TableName("book")
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class Book {
+public class BookDTO {
     @TableId(type = IdType.AUTO)
-    private Long id; // 主键ID
-
+    private Integer id; // 主键ID
     private String title; // 书名
     private String author; // 作者
     private String publisher; // 出版社

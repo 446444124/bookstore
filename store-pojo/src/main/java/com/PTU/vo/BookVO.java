@@ -1,24 +1,13 @@
-package com.PTU.entity;
+package com.PTU.vo;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
-// Book实体类（图书）
+
 @Data
-@TableName("book")
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class Book {
-    @TableId(type = IdType.AUTO)
-    private Long id; // 主键ID
+public class BookVO {
+    private Integer id; // 主键ID
 
     private String title; // 书名
     private String author; // 作者
