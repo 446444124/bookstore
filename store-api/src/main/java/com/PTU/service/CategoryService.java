@@ -1,7 +1,9 @@
 package com.PTU.service;
 
 import com.PTU.dto.CategoryDTO;
+import com.PTU.dto.CategoryPageQueryDTO;
 import com.PTU.entity.Category;
+import com.PTU.result.PageResult;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 public interface CategoryService extends IService<Category> {
@@ -15,4 +17,11 @@ public interface CategoryService extends IService<Category> {
      * @param id
      */
     void deleteById(Long id);
+
+    /**
+     * 分页查询
+     * @param categoryPageQueryDTO
+     * @return
+     */
+    PageResult pageQuery(CategoryPageQueryDTO categoryPageQueryDTO);
 }
