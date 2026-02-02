@@ -11,6 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/admin/book")
 @Api(tags = "B端图书接口")
@@ -33,5 +35,12 @@ public class BookController {
         log.info("图书分页查询：{}", bookPageQueryDTO);
         PageResult pageResult = bookService.pageQuery(bookPageQueryDTO);
         return Result.success(pageResult);
+    }
+    @DeleteMapping
+    @ApiOperation("批量删除图书")
+    public Result delete(@RequestParam List<Long> ids) {
+        log.info("根据id删除图书：{}", ids);
+        bookService.removeBatchByIds(ids);
+        return Result.success();
     }
 }
