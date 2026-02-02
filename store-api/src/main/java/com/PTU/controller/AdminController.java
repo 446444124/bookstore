@@ -1,6 +1,8 @@
 package com.PTU.controller;
 
 import com.PTU.constant.JwtClaimsConstant;
+import com.PTU.constant.MessageConstant;
+import com.PTU.context.BaseContext;
 import com.PTU.dto.AdminDTO;
 import com.PTU.dto.AdminLoginDTO;
 import com.PTU.dto.AdminPageQueryDTO;
@@ -72,6 +74,34 @@ public class AdminController {
         log.info("员工分页查询：{}", adminPageQueryDTO);
         PageResult pageResult =adminService.pageQuery(adminPageQueryDTO);
         return Result.success(pageResult);
+    }
+    @PostMapping("/status/{status}")
+    @ApiOperation("启用禁用员工账号")
+    public Result startOrStop(@PathVariable Integer status, Long id) {
+        //不能禁用自己
+        if(id.equals(BaseContext.getCurrentId())){
+            return Result.error(MessageConstant.CANNOT_DISABLE_SELF);
+        }
+        log.info("启用禁用员工账号：{},{}", status, id);
+        adminService.startOrStop(status, id);
+        return Result.success();
+    }
+    @GetMapping("/{id}")
+    @ApiOperation("根据id查询员工")
+    public Result<Admin> getById(@PathVariable Long id){
+        log.info("根据id查询员工信息：{}", id);
+        Admin admin = adminService.getById(id);
+        // 对密码进行脱敏处理
+        admin.setPassword("****");
+        return Result.success(admin);
+    }
+
+    @PutMapping
+    @ApiOperation("修改员工信息")
+    public Result update(@RequestBody Admin admin){
+        log.info("修改员工信息：{}", admin);
+        adminService.updateById(admin);
+        return Result.success();
     }
 
 }

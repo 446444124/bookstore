@@ -48,7 +48,7 @@ spring:
 logging:
   level:
     com:
-      store:
+      PTU:
         mapper: debug
         service: info
         controller: info

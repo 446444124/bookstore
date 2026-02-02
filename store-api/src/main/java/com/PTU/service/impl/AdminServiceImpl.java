@@ -99,4 +99,14 @@ public class AdminServiceImpl extends ServiceImpl<AdminMapper, Admin> implements
         // 构建返回结果
         return new PageResult(page.getTotal(), page.getRecords());
     }
+
+    @Override
+    public void startOrStop(Integer status, Long id) {
+        Admin admin =Admin.builder()
+                .status(status)
+                .employeeId(id)
+                .build();
+        this.updateById(admin);
+    }
+
 }

@@ -21,4 +21,6 @@ public interface AdminService extends IService<Admin> {
      * @return
      */
     PageResult pageQuery(AdminPageQueryDTO adminPageQueryDTO);
+
+    void startOrStop(Integer status, Long id);
 }
