@@ -1,12 +1,17 @@
-package com.PTU.entity;
+package com.PTU.dto;
 
-import com.baomidou.mybatisplus.annotation.TableName;
+import io.swagger.annotations.ApiModel;
 import lombok.Data;
-import java.time.LocalDateTime;
 
+import java.io.Serializable;
+
+/**
+ * C端用户登录
+ */
 @Data
-@TableName("employee")
-public class Admin {
+@ApiModel(description = "管理员新增时传递的数据模型")
+public class AdminDTO implements Serializable {
+
     private Long employeeId;
     private String empNo;
     private String password;
@@ -15,6 +20,4 @@ public class Admin {
     private String email;
     private String phone;
     private Integer status;
-    private LocalDateTime createTime;
-    private LocalDateTime updateTime;
 }
