@@ -16,4 +16,8 @@ public class BookPageQueryDTO implements Serializable {
     private String author;
 
     private String isbn;
+
+    private Integer status;
+
+    private  Integer categoryId;
 }

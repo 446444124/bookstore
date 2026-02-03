@@ -9,7 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-
+import java.time.LocalDateTime;
 // Book实体类（图书）
 @Data
 @TableName("book")
@@ -30,4 +30,8 @@ public class Book {
     private String coverImage; // 封面图片URL
     private String description; // 图书描述
     private Integer status; // 状态（0：禁用，1：起售）
+    //更新时间
+    private LocalDateTime updateTime;
+    //创建时间
+    private LocalDateTime createTime;
 }

@@ -36,16 +36,18 @@ public class BookServiceImpl extends ServiceImpl<BookMapper, Book> implements Bo
         this.save(newBook);
     }
     //使用MyBatis-Plus内置分页
-    public PageResult pageQuery(BookPageQueryDTO BookPageQueryDTO) {
+    public PageResult pageQuery(BookPageQueryDTO bookPageQueryDTO) {
         // 创建MyBatis-Plus分页对象
-        Page<Book> page = new Page<>(BookPageQueryDTO.getPage(), BookPageQueryDTO.getPageSize());
+        Page<Book> page = new Page<>(bookPageQueryDTO.getPage(), bookPageQueryDTO.getPageSize());
 
         // 构建查询条件
         LambdaQueryWrapper<Book> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper
-                .like(BookPageQueryDTO.getTitle() != null, Book::getTitle, BookPageQueryDTO.getTitle())
-                .eq(BookPageQueryDTO.getIsbn() != null, Book::getIsbn, BookPageQueryDTO.getIsbn())
-                .like(BookPageQueryDTO.getAuthor() != null, Book::getAuthor, BookPageQueryDTO.getAuthor());
+                .like(bookPageQueryDTO.getTitle() != null, Book::getTitle, bookPageQueryDTO.getTitle())
+                .eq(bookPageQueryDTO.getIsbn() != null, Book::getIsbn, bookPageQueryDTO.getIsbn())
+                .like(bookPageQueryDTO.getAuthor() != null, Book::getAuthor, bookPageQueryDTO.getAuthor())
+                .eq(bookPageQueryDTO.getStatus() != null, Book::getStatus, bookPageQueryDTO.getStatus())
+                .eq(bookPageQueryDTO.getCategoryId() != null, Book::getCategoryId, bookPageQueryDTO.getCategoryId());
 
         // 执行分页查询
         this.page(page, queryWrapper);
