@@ -5,6 +5,7 @@ import com.PTU.dto.BookAddDTO;
 import com.PTU.dto.BookDTO;
 import com.PTU.dto.BookPageQueryDTO;
 import com.PTU.entity.Book;
+import com.PTU.exception.BaseException;
 import com.PTU.result.PageResult;
 import com.PTU.result.Result;
 import com.PTU.service.BookService;
@@ -70,9 +71,13 @@ public class BookController {
     @ApiOperation("修改图书")
     public Result update(@RequestBody BookDTO bookDTO) {
         log.info("修改图书：{}", bookDTO);
+        //isbn不能为空
+        if(bookDTO.getIsbn() == null){
+            throw new BaseException(MessageConstant.BOOK_ISBN_NULL);
+        }
         //校验isbn是否存在
         Book book1 = bookService.getOne(new LambdaQueryWrapper<Book>().eq(Book::getIsbn, bookDTO.getIsbn()));
-        if (book1 != null ) {
+        if (book1 != null && !book1.getId().equals(bookDTO.getId())) {
             return Result.error(MessageConstant.ISBN_EXIST);
         }
         Book book = new Book();

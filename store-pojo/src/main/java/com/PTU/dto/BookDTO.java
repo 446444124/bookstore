@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 @Data
 public class BookDTO {
     @TableId(type = IdType.AUTO)
-    private Integer id; // 主键ID
+    private Long id; // 主键ID
     private String title; // 书名
     private String author; // 作者
     private String publisher; // 出版社

@@ -22,6 +22,10 @@ import java.util.List;
 public class BookServiceImpl extends ServiceImpl<BookMapper, Book> implements BookService {
     @Override
     public void addBook(BookAddDTO bookAddDTO) {
+        //isbn不能为空
+        if(bookAddDTO.getIsbn() == null){
+            throw new BaseException(MessageConstant.BOOK_ISBN_NULL);
+        }
         //检查isbn是否存在
         Book book = baseMapper.selectOne(new LambdaQueryWrapper<Book>().eq(Book::getIsbn, bookAddDTO.getIsbn()));
         if(book != null){
