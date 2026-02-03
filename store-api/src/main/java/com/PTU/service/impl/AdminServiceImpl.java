@@ -91,7 +91,10 @@ public class AdminServiceImpl extends ServiceImpl<AdminMapper, Admin> implements
         // 构建查询条件
         LambdaQueryWrapper<Admin> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper
-                .like(adminPageQueryDTO.getName() != null, Admin::getRealName, adminPageQueryDTO.getName());
+                .like(adminPageQueryDTO.getName() != null, Admin::getRealName, adminPageQueryDTO.getName())
+                .eq(adminPageQueryDTO.getStatus() != null, Admin::getStatus, adminPageQueryDTO.getStatus())
+                .like(adminPageQueryDTO.getPhone() != null, Admin::getPhone, adminPageQueryDTO.getPhone())
+                .like(adminPageQueryDTO.getPosition() != null, Admin::getPosition, adminPageQueryDTO.getPosition());
 
         // 执行分页查询
         this.page(page, queryWrapper);

@@ -16,4 +16,10 @@ public class AdminPageQueryDTO implements Serializable {
     //每页显示记录数
     private int pageSize;
 
+    private Integer status;
+
+    private String phone;
+
+    private String position;
+
 }
