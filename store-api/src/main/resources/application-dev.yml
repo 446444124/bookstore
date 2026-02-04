@@ -7,11 +7,11 @@ store:
     username: root
     password: 123456
 
-#  alioss:
-#    endpoint: oss-cn-beijing.aliyuncs.com
-#    access-key-id: ${ALIYUN_ACCESS_KEY}
-#    access-key-secret: ${ALIYUN_SECRET_KEY}
-#    bucket-name: store-lunxi
+  alioss:
+    endpoint: oss-cn-hangzhou.aliyuncs.com
+    access-key-id: ${ALIYUN_ACCESS_KEY}
+    access-key-secret: ${ALIYUN_SECRET_KEY}
+    bucket-name: ptu-bookstore
 
   redis:
     host: localhost

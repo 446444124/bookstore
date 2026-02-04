@@ -35,6 +35,12 @@ spring:
     host: ${store.redis.host}
     port: ${store.redis.port}
     database: ${store.redis.database}
+  # 设置单个文件最大大小为10MB
+  servlet:
+    multipart:
+      max-file-size: 10MB
+  # 设置总请求数据最大大小为10MB
+      max-request-size: 10MB
 
 
 mybatis-plus:

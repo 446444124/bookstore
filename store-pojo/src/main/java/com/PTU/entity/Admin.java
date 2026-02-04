@@ -27,4 +27,6 @@ public class Admin {
     private Integer status;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
+    //头像url
+    private String avatar;
 }
