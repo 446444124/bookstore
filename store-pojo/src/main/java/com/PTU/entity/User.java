@@ -1,14 +1,15 @@
 package com.PTU.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
-
-import java.math.BigDecimal;
 
 // User实体类（学生）
 @Data
 @TableName("user")
 public class User {
+    @TableId(type = IdType.AUTO)
     private Long userId;
     private String studentId;
     private String username;
@@ -18,5 +19,6 @@ public class User {
     private String phone;
     private int gender;
     private Integer status;
-    // 省略其他...
+    private String avatar;
+
 }

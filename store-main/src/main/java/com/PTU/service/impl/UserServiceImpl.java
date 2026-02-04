@@ -9,8 +9,8 @@ import com.PTU.exception.AccountLockedException;
 import com.PTU.exception.AccountNotFoundException;
 import com.PTU.exception.PasswordErrorException;
 import com.PTU.mapper.UserMapper;
+import com.PTU.result.Result;
 import com.PTU.service.UserService;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.extern.slf4j.Slf4j;
@@ -57,7 +57,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public void register(UserDTO tuser) {
+    public Result register(UserDTO tuser) {
         //1.判断学号是否已存在
         String studentId = tuser.getStudentId();
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
@@ -65,7 +65,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         User user = this.getOne(queryWrapper);
         if (user != null) {
             //学号已存在
-            throw new AccountNotFoundException(MessageConstant.ALREADY_EXIST);
+            return Result.error(MessageConstant.ALREADY_EXIST);
+//            throw new AccountNotFoundException(MessageConstant.ALREADY_EXIST);
         }
         //2.判断手机号是否已存在
         String phone = tuser.getPhone();
@@ -74,7 +75,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user = this.getOne(queryWrapper);
         if (user != null) {
             //手机号已存在
-            throw new AccountNotFoundException(MessageConstant.PHONE_EXIST);
+//            throw new AccountNotFoundException(MessageConstant.PHONE_EXIST);
+            return Result.error(MessageConstant.PHONE_EXIST);
         }
         //3.密码 加密存储
         tuser.setPassword(DigestUtils.md5DigestAsHex(tuser.getPassword().getBytes()));
@@ -83,5 +85,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         BeanUtils.copyProperties(tuser,newuser);
         //4.注册用户
         this.save(newuser);
+        return Result.success();
     }
 }
