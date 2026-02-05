@@ -20,5 +20,6 @@ public class User {
     private int gender;
     private Integer status;
     private String avatar;
+    private Long majorId;
 
 }

@@ -58,6 +58,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public Result register(UserDTO tuser) {
+        //学号需为12位纯数字
+        if (!tuser.getStudentId().matches("^\\d{12}$")) {
+            //学号格式错误
+            return Result.error(MessageConstant.STUDENT_ID_ERROR);
+        }
         //1.判断学号是否已存在
         String studentId = tuser.getStudentId();
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
@@ -67,6 +72,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             //学号已存在
             return Result.error(MessageConstant.ALREADY_EXIST);
 //            throw new AccountNotFoundException(MessageConstant.ALREADY_EXIST);
+        }
+        //校验手机号合法性(11位纯数字)
+        if (!user.getPhone().matches("^\\d{11}$")) {
+            return Result.error("手机号格式错误");
         }
         //2.判断手机号是否已存在
         String phone = tuser.getPhone();

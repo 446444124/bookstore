@@ -44,7 +44,9 @@ public class WebMvcConfiguration extends WebMvcConfigurationSupport {
                 .excludePathPatterns("/user/user/register")
                 .excludePathPatterns("/user/user/logout")
                 .excludePathPatterns("/user/shop/status")
-                .excludePathPatterns("/user/book/page");
+                .excludePathPatterns("/user/book/page")
+                .excludePathPatterns("/user/category/page")
+                .excludePathPatterns("/user/major/page");
     }
 
 

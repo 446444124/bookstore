@@ -13,7 +13,7 @@ public class MessageConstant {
     public static final String BOOK_EXIST = "图书已存在";
     public static final String ACCOUNT_LOCKED = "账号被锁定";
     public static final String UNKNOWN_ERROR = "未知错误";
-    public static final String USER_NOT_LOGIN = "用户未登录";
+    public static final String STUDENT_ID_ERROR = "学号非法";
     public static final String CATEGORY_BE_RELATED_BY_BOOK = "当前分类关联了品书,不能删除";
     public static final String ISBN_EXIST = "图书ISBN已存在";
     public static final String SHOPPING_CART_IS_NULL = "购物车数据为空，不能下单";

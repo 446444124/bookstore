@@ -1,6 +1,8 @@
 package com.PTU.controller;
 
 import com.PTU.constant.JwtClaimsConstant;
+import com.PTU.constant.MessageConstant;
+import com.PTU.context.BaseContext;
 import com.PTU.dto.UserDTO;
 import com.PTU.dto.UserLoginDTO;
 import com.PTU.entity.User;
@@ -68,5 +70,27 @@ public class UserController {
         // 对密码进行脱敏处理
         user.setPassword("****");
         return Result.success(user);
+    }
+    @PutMapping
+    @ApiOperation("修改用户信息")
+    public Result update(@RequestBody User user){
+        log.info("修改用户信息：{}", user);
+        //仅修改自己的信息
+        if(!user.getUserId().equals(BaseContext.getCurrentId())){
+            return Result.error("不能修改其他用户的信息");
+        }
+        if(user.getStudentId()!=null){
+            //校验学号合法性(12位纯数字)
+            if (!user.getStudentId().matches("^\\d{12}$")) {
+                return Result.error(MessageConstant.STUDENT_ID_ERROR);
+            }
+        }
+        //校验手机号合法性(11位纯数字)
+        if (!user.getPhone().matches("^\\d{11}$")) {
+        return Result.error("手机号格式错误");
+            }
+
+        userService.updateById(user);
+        return Result.success();
     }
 }
