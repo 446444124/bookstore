@@ -74,7 +74,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 //            throw new AccountNotFoundException(MessageConstant.ALREADY_EXIST);
         }
         //校验手机号合法性(11位纯数字)
-        if (!user.getPhone().matches("^\\d{11}$")) {
+        if (!tuser.getPhone().matches("^\\d{11}$")) {
             return Result.error("手机号格式错误");
         }
         //2.判断手机号是否已存在
