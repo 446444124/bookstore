@@ -79,5 +79,14 @@ store:
     access-key-secret: ${store.alioss.access-key-secret}
     bucket-name: ${store.alioss.bucket-name}
 
-
+  alipay:
+    appid: ${store.alipay.appid}
+    merchantPrivateKey: ${store.alipay.merchantPrivateKey}
+    alipayPublicKey: ${store.alipay.alipayPublicKey}
+    notifyUrl: ${store.alipay.notifyUrl}
+    returnUrl: ${store.alipay.returnUrl}
+    signType: ${store.alipay.signType}
+    charset: ${store.alipay.charset}
+    # 我的支付宝网关地址
+    gatewayUrl: ${store.alipay.gatewayUrl}
 
