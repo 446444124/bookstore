@@ -26,6 +26,16 @@ export default defineConfig({
         changeOrigin: true,
         secure: false
       },
+      '/admin/order': {
+        target: 'http://127.0.0.1:8090',
+        changeOrigin: true,
+        secure: false
+      },
+      '/admin/statistics': {
+        target: 'http://127.0.0.1:8090',
+        changeOrigin: true,
+        secure: false
+      },
       '/admin/common': {
         target: 'http://127.0.0.1:8090',
         changeOrigin: true,

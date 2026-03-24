@@ -235,24 +235,28 @@ const handleSizeChange = (s) => {
 
 <style>
 .browse {
-  max-width: 1200px;
+  max-width: 1240px;
   margin: 0 auto;
-  padding: 12px;
+  padding: 8px 4px 20px;
 }
 .layout {
   display: grid;
   grid-template-columns: 200px 1fr;
-  gap: 12px;
+  gap: 14px;
 }
 .side {
-  background: #fff;
-  border-radius: 12px;
-  padding: 8px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 10px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
 .content {
-  background: #fff;
-  border-radius: 12px;
-  padding: 12px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 16px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
 .cat-menu {
   border-right: none;
@@ -264,13 +268,13 @@ const handleSizeChange = (s) => {
   margin-bottom: 8px;
 }
 .title {
-  font-weight: 600;
-  font-size: 18px;
+  font-weight: 700;
+  font-size: 20px;
 }
 .grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 12px;
+  gap: 14px;
 }
 @media (max-width: 1200px) {
   .grid { grid-template-columns: repeat(5, 1fr); }
@@ -288,13 +292,19 @@ const handleSizeChange = (s) => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-height: 280px;
+  border-radius: var(--radius);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.book-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
 }
 .cover {
   width: 150px;
   height: 150px;
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: #f5f7fa;
   object-fit: cover;
 }
@@ -310,8 +320,8 @@ const handleSizeChange = (s) => {
   height: 40px;
 }
 .author {
-  color: #606266;
-  font-size: 12px;
+  color: var(--text-sub);
+  font-size: 13px;
   line-height: 16px;
   max-width: 180px;
   overflow: hidden;
@@ -319,7 +329,7 @@ const handleSizeChange = (s) => {
   text-overflow: ellipsis;
 }
 .price {
-  color: #d97706;
+  color: #1f2937;
   font-weight: 700;
   margin-top: 2px;
 }
@@ -332,6 +342,18 @@ const handleSizeChange = (s) => {
 .pager {
   display: flex;
   justify-content: flex-end;
-  margin-top: 12px;
+  margin-top: 16px;
+}
+@media (max-width: 960px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  .side,
+  .content {
+    border-radius: var(--radius);
+  }
+  .side {
+    padding: 6px;
+  }
 }
 </style>

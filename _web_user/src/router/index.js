@@ -5,14 +5,18 @@ import Browse from '../pages/Browse.vue'
 import BookDetail from '../pages/BookDetail.vue'
 import Cart from '../pages/Cart.vue'
 import Profile from '../pages/Profile.vue'
+import PaySuccess from '../pages/PaySuccess.vue'
+import Orders from '../pages/Orders.vue'
 
 const routes = [
   { path: '/', component: Home },
   { path: '/login', component: Login },
   { path: '/browse', component: Browse },
   { path: '/book/:id', component: BookDetail },
+  { path: '/paysuccess', component: PaySuccess },
+  { path: '/profile', component: Profile },
   { path: '/cart', component: Cart },
-  { path: '/profile', component: Profile }
+  { path: '/orders', component: Orders }
 ]
 
 const router = createRouter({

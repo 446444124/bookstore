@@ -12,6 +12,7 @@
         </div>
         <el-button @click="goHome">回到首页</el-button>
         <el-button v-if="isLoggedIn" type="primary" link @click="onProfileClick">个人主页</el-button>
+        <el-button v-if="isLoggedIn" type="primary" link @click="onOrdersClick">我的订单</el-button>
         <el-button v-if="!isLoggedIn" @click="goLogin">登录</el-button>
         <el-button v-else type="danger" @click="logout">退出登录</el-button>
       </div>
@@ -45,6 +46,16 @@ const onProfileClick = () => {
     return
   }
   router.push('/profile')
+}
+const onOrdersClick = () => {
+  const tk = localStorage.getItem('token') || ''
+  const uid = localStorage.getItem('userId') || ''
+  if (!tk || !uid) {
+    ElMessage.warning('请先登录')
+    router.push({ path: '/login', query: { redirect: '/orders', msg: '请先登录' } })
+    return
+  }
+  router.push('/orders')
 }
 const onBadgeError = () => {
   badgeSrc.value =
@@ -148,18 +159,63 @@ onUnmounted(() => {
 </script>
 
 <style>
+:root {
+  --bg: #f6f8fb;
+  --surface: #ffffff;
+  --surface-soft: #fbfcfe;
+  --text-main: #111827;
+  --text-sub: #6b7280;
+  --border: #e8ecf3;
+  --primary: #5563f2;
+  --primary-weak: #eef0ff;
+  --success: #3f8f6b;
+  --warning: #b7823a;
+  --danger: #c85c5c;
+  --radius: 8px;
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+
+  --el-color-primary: var(--primary);
+  --el-color-success: var(--success);
+  --el-color-warning: var(--warning);
+  --el-color-danger: var(--danger);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text-main);
+}
+
+* {
+  box-sizing: border-box;
+}
+
 .app {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background: linear-gradient(180deg, #f8faff 0%, var(--bg) 100%);
 }
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #ffffff;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 30;
 }
 .brand {
   font-weight: 700;
@@ -177,7 +233,9 @@ onUnmounted(() => {
 .nav-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 .profile {
   display: flex;
@@ -194,18 +252,125 @@ onUnmounted(() => {
   display: block;
 }
 .name {
-  color: #303133;
+  color: var(--text-sub);
   font-size: 14px;
 }
 .main {
   flex: 1;
-  background: #f5f7fa;
+  background: transparent;
+  padding: var(--space-2);
 }
 .footer {
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border);
   padding: 12px 16px;
   text-align: center;
-  color: #606266;
-  background: #fff;
+  color: var(--text-sub);
+  background: var(--surface-soft);
+}
+
+:global(.el-card),
+:global(.el-dialog),
+:global(.el-message-box) {
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+:global(.el-button) {
+  border-radius: var(--radius);
+  height: 36px;
+  padding: 0 14px;
+  font-weight: 600;
+  transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease, border-color .2s ease;
+}
+
+:global(.el-button:hover) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08);
+}
+
+:global(.el-input__wrapper),
+:global(.el-select__wrapper),
+:global(.el-textarea__inner) {
+  border-radius: var(--radius);
+}
+
+:global(.el-input__wrapper),
+:global(.el-select__wrapper) {
+  min-height: 36px;
+}
+
+:global(.el-form-item) {
+  margin-bottom: var(--space-2);
+}
+
+:global(.el-form-item__label) {
+  color: var(--text-sub);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+:global(.el-table) {
+  --el-table-header-bg-color: #f7f9fd;
+  --el-table-row-hover-bg-color: #f8faff;
+  --el-table-border-color: var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+:global(.el-table th.el-table__cell) {
+  padding: 10px 0;
+}
+
+:global(.el-table td.el-table__cell) {
+  padding: 11px 0;
+}
+
+:global(.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell) {
+  background: #fcfdff;
+}
+
+:global(.title-bar) {
+  min-height: 56px;
+  padding: 0 2px;
+  margin-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+:global(.title-bar .title),
+:global(.title-row .title),
+:global(.card-head) {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text-main);
+}
+
+:global(.title-desc),
+:global(.sub-title),
+:global(.desc) {
+  color: var(--text-sub);
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .header {
+    padding: 12px 14px;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .brand {
+    font-size: 18px;
+  }
+  .brand .badge {
+    width: 36px;
+    height: 36px;
+  }
+  .main {
+    padding: 12px 10px 18px;
+  }
 }
 </style>

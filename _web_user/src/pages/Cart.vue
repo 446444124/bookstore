@@ -332,11 +332,16 @@ const onGoPay = async () => {
     if (ct.includes('application/json')) {
       try { data = await resp.json() } catch (_) {}
     }
-    if (resp.ok) {
+    const bizOk = resp.ok && (data?.code === undefined || data?.code === 1)
+    if (bizOk) {
       const d = data?.data ?? data
       const o = d?.data ?? d
       const oid = o?.id ?? o?.orderId ?? ''
       const ono = o?.orderNumber ?? o?.no ?? o?.number ?? ''
+      if (!oid && !ono) {
+        ElMessage.error('下单失败，请重试')
+        return
+      }
       const oamt = Number((o?.orderAmount ?? o?.amount ?? o?.totalAmount ?? orderForm.value.totalAmount) ?? 0) || 0
       const otm = o?.orderTime ?? o?.createTime ?? o?.createdAt ?? ''
       orderSuccess.value = { id: String(oid || ''), orderNumber: String(ono || ''), orderAmount: oamt, orderTime: String(otm || '') }
@@ -344,7 +349,7 @@ const onGoPay = async () => {
         const payWin = window.open('', '_blank')
         try {
           const token2 = localStorage.getItem('token') || ''
-          const payResp = await fetch('/api/alipay/pay', {
+          const payResp = await fetch(`/api/alipay/pay?id=${encodeURIComponent(oid || ono)}`, {
             method: 'GET',
             headers: token2 ? { authentication: token2 } : {}
           })
@@ -356,19 +361,25 @@ const onGoPay = async () => {
             payWin.document.write(text)
             payWin.document.close()
           } else {
-            let url = ''
-            try {
-              const j = JSON.parse(text)
-              url = j?.url || j?.payUrl || j?.data?.url || j?.data?.payUrl || ''
-            } catch (_) {
-              url = ''
+            const m = text.trim().match(/^redirect\s*:\s*(.+)$/i)
+            if (m && m[1]) {
+              const url = m[1].trim()
+              if (payWin) payWin.location.href = url
+            } else {
+              let url = ''
+              try {
+                const j = JSON.parse(text)
+                url = j?.url || j?.payUrl || j?.data?.url || j?.data?.payUrl || ''
+              } catch (_) {
+                url = ''
+              }
+              if (!url) url = `/api/alipay/pay?id=${encodeURIComponent(oid || ono)}`
+              if (payWin) payWin.location.href = url
             }
-            if (!url) url = '/api/alipay/pay'
-            if (payWin) payWin.location.href = url
           }
           ElMessage.success('订单已创建，前往支付')
         } catch (_) {
-          if (payWin) payWin.location.href = '/api/alipay/pay'
+          if (payWin) payWin.location.href = `/api/alipay/pay?id=${encodeURIComponent(oid || ono)}`
         }
         orderDialogVisible.value = false
         loadCart()

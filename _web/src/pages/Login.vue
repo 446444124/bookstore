@@ -84,7 +84,7 @@ html, body, #app {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-image: linear-gradient(rgba(16, 28, 45, 0.45), rgba(16, 28, 45, 0.45)), url('https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?q=80&w=1920&auto=format&fit=crop');
+  background-image: linear-gradient(rgba(15, 23, 42, 0.52), rgba(15, 23, 42, 0.42)), url('https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?q=80&w=1920&auto=format&fit=crop');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -114,11 +114,14 @@ html, body, #app {
   letter-spacing: 2px;
 }
 .login-card {
-  width: clamp(460px, 36vw, 820px);
-  padding: 24px;
-  min-height: clamp(380px, 46vh, 560px);
+  width: min(540px, calc(100vw - 28px));
+  padding: 14px;
+  min-height: auto;
+  border-radius: var(--admin-radius);
+  border: 1px solid rgba(255, 255, 255, 0.48);
   background-color: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.22);
+  backdrop-filter: blur(8px);
 }
 .login-card .el-card__body {
   display: flex;
@@ -126,16 +129,18 @@ html, body, #app {
   align-items: center;
   justify-content: center;
   height: 100%;
+  padding: 12px 12px 4px;
 }
 .login-form {
-  width: clamp(360px, 72%, 640px);
+  width: min(400px, 100%);
   margin: 0 auto;
 }
 .title {
-  font-size: clamp(24px, 2.8vw, 36px);
-  font-weight: 600;
-  margin-bottom: clamp(18px, 2vw, 28px);
+  font-size: clamp(24px, 2.6vw, 32px);
+  font-weight: 700;
+  margin-bottom: 16px;
   text-align: center;
+  color: #0f172a;
 }
 .el-form-item {
   margin-bottom: clamp(18px, 2.4vw, 32px);
@@ -148,5 +153,14 @@ html, body, #app {
 }
 .login-form .el-input__inner::placeholder {
   font-size: inherit;
+}
+@media (max-width: 680px) {
+  .logo-title {
+    top: 26px;
+  }
+  .system-title {
+    font-size: 20px;
+    letter-spacing: 1px;
+  }
 }
 </style>

@@ -5,6 +5,7 @@
         <el-menu-item index="/admin/dashboard">仪表盘</el-menu-item>
         <el-menu-item index="/admin/books">图书管理</el-menu-item>
         <el-menu-item index="/admin/categories">分类管理</el-menu-item>
+        <el-menu-item index="/admin/orders">订单管理</el-menu-item>
         <el-menu-item index="/admin/employees">员工管理</el-menu-item>
       </el-menu>
     </el-aside>
@@ -93,18 +94,26 @@ const goProfile = () => {
 <style>
 .admin {
   height: 100vh;
+  background: var(--admin-bg);
 }
 .aside {
-  border-right: 1px solid #e5e7eb;
+  border-right: 1px solid var(--admin-border);
+  background: var(--admin-surface);
 }
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--admin-border);
+  background: color-mix(in srgb, var(--admin-surface) 92%, transparent);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 .main {
-  background: #f5f7fa;
+  background: var(--admin-bg);
+  padding: var(--admin-space-2);
 }
 .header-right {
   display: flex;
@@ -117,12 +126,12 @@ const goProfile = () => {
   gap: 8px;
   cursor: pointer;
   padding: 2px 6px;
-  border-radius: 8px;
+  border-radius: var(--admin-radius);
   transition: background-color .2s ease, box-shadow .2s ease;
 }
 .profile-link:hover {
-  background: #eef2ff;
-  box-shadow: inset 0 0 0 1px #c7d2fe;
+  background: var(--admin-primary-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--admin-primary) 35%, #d7deeb);
 }
 .profile-link:active {
   background: #e0e7ff;
@@ -135,12 +144,12 @@ const goProfile = () => {
   text-decoration: underline;
 }
 .home-label {
-  color: #2563eb;
+  color: var(--admin-primary);
   text-decoration: underline;
   font-size: 11px;
 }
 .chevron {
-  color: #2563eb;
+  color: var(--admin-primary);
   font-size: 12px;
   line-height: 1;
 }
@@ -159,7 +168,23 @@ const goProfile = () => {
   line-height: 1.2;
 }
 .user-info .line {
-  color: #606266;
+  color: var(--admin-sub);
   font-size: 12px;
+}
+
+@media (max-width: 920px) {
+  .admin {
+    height: auto;
+    min-height: 100vh;
+  }
+  .main {
+    padding: 12px;
+  }
+  .header {
+    height: auto;
+    padding: 10px 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
 }
 </style>

@@ -32,6 +32,7 @@ public class Orders implements Serializable {
     public static final Integer DELIVERY_IN_PROGRESS = 4;
     public static final Integer COMPLETED = 5;
     public static final Integer CANCELLED = 6;
+    public static final Integer RETURN_REQUESTED = 7;
 
     /**
      * 支付状态 0未支付 1已支付 2退款
@@ -60,7 +61,7 @@ public class Orders implements Serializable {
     private BigDecimal totalAmount;
 
     /**
-     * 订单状态
+     * 订单状态 1待付款 2待接单 3已接单 4派送中 5已完成 6已取消 7退款
      */
     @TableField("status")
     private Integer status;

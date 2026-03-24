@@ -96,7 +96,6 @@ const loadBooks = async () => {
   }
 }
 
-onMounted(loadBooks)
 const loadHotCategories = async () => {
   try {
     const token = localStorage.getItem('token') || ''
@@ -131,7 +130,30 @@ const loadHotCategories = async () => {
     hotCategories.value = []
   }
 }
-onMounted(loadHotCategories)
+const loadHomeRecommend = async () => {
+  try {
+    const token = localStorage.getItem('token') || ''
+    const resp = await fetch('/user/home/recommend?categoryLimit=10&bookLimit=12', {
+      method: 'GET',
+      headers: token ? { authentication: token } : {}
+    })
+    const ct = resp.headers.get('content-type') || ''
+    let data = {}
+    if (ct.includes('application/json')) {
+      try { data = await resp.json() } catch (_) {}
+    }
+    if (resp.ok) {
+      const d = data?.data ?? data
+      const cats = Array.isArray(d?.hotCategories) ? d.hotCategories : []
+      const books = Array.isArray(d?.featuredBooks) ? d.featuredBooks : []
+      if (cats.length) hotCategories.value = cats
+      if (books.length) featuredBooks.value = books
+      return
+    }
+  } catch (_) {}
+  await Promise.all([loadHotCategories(), loadBooks()])
+}
+onMounted(loadHomeRecommend)
 watch(() => route.query.q, () => {
   loadBooks()
 })
@@ -197,26 +219,29 @@ const onCatClick = (c) => {
 
 <style>
 .home {
-  max-width: 1200px;
+  max-width: 1240px;
   margin: 0 auto;
-  padding: 12px;
+  padding: 8px 4px 20px;
 }
 .banner-image {
   width: 100%;
   height: 360px;
   object-fit: cover;
-  border-radius: 12px;
+  border-radius: var(--radius);
 }
 .quick-cats, .featured {
-  margin-top: 16px;
-  background: #fff;
-  border-radius: 12px;
-  padding: 12px;
+  margin-top: 18px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 18px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
 .title {
-  font-weight: 600;
-  font-size: 18px;
-  margin-bottom: 8px;
+  font-weight: 700;
+  font-size: 20px;
+  margin-bottom: 12px;
+  letter-spacing: .2px;
 }
 .title-row {
   display: flex;
@@ -231,11 +256,18 @@ const onCatClick = (c) => {
 }
 .cat-tag {
   cursor: pointer;
+  border-radius: 999px;
+  transition: all .2s ease;
+}
+.cat-tag:hover {
+  color: var(--primary);
+  border-color: color-mix(in srgb, var(--primary) 45%, #d1d5db);
+  background: var(--primary-weak);
 }
 .grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 12px;
+  gap: 14px;
 }
 @media (max-width: 1200px) {
   .grid { grid-template-columns: repeat(5, 1fr); }
@@ -253,13 +285,20 @@ const onCatClick = (c) => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-height: 280px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: transform .22s ease, box-shadow .22s ease;
+}
+.book-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
 }
 .cover {
-  width: 150px;
-  height: 150px;
-  border-radius: 8px;
+  width: 152px;
+  height: 152px;
+  border-radius: var(--radius);
   background: #f5f7fa;
   object-fit: cover;
 }
@@ -274,18 +313,31 @@ const onCatClick = (c) => {
   height: 40px;
 }
 .author {
-  color: #606266;
-  font-size: 12px;
+  color: var(--text-sub);
+  font-size: 13px;
   height: 16px;
 }
 .price {
-  color: #d97706;
+  color: #1f2937;
   font-weight: 700;
+  font-size: 16px;
 }
 .ops {
   display: flex;
   gap: 6px;
   margin-top: auto;
   justify-content: center;
+}
+@media (max-width: 768px) {
+  .quick-cats, .featured {
+    padding: 14px;
+    border-radius: var(--radius);
+  }
+  .title {
+    font-size: 18px;
+  }
+  .banner-image {
+    border-radius: var(--radius);
+  }
 }
 </style>

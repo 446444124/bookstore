@@ -286,8 +286,8 @@ const onRegister = async () => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #f5f7fa;
-  padding: 20px;
+  background: radial-gradient(1200px 600px at 70% -20%, #e7ebff 0%, transparent 55%), var(--bg);
+  padding: 24px 14px;
 }
 .brand {
   display: flex;
@@ -301,14 +301,17 @@ const onRegister = async () => {
 }
 .brand .title {
   font-weight: 700;
-  font-size: 22px;
+  font-size: 24px;
+  letter-spacing: .2px;
 }
 .card {
-  width: 380px;
-  aspect-ratio: 4 / 3;
+  width: min(420px, 100%);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
 }
 .card .el-card__body {
-  padding: 16px 18px;
+  padding: 22px 22px 20px;
 }
 .login-form {
   display: flex;
@@ -316,9 +319,9 @@ const onRegister = async () => {
   gap: 12px;
 }
 .card-title {
-  font-size: 18px;
-  font-weight: 600;
-  margin-bottom: 12px;
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 14px;
   text-align: center;
 }
 .ops {
@@ -332,5 +335,13 @@ const onRegister = async () => {
   display: flex;
   gap: 10px;
   justify-content: flex-end;
+}
+@media (max-width: 640px) {
+  .brand .title {
+    font-size: 20px;
+  }
+  .card .el-card__body {
+    padding: 16px 14px;
+  }
 }
 </style>

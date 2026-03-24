@@ -6,6 +6,7 @@ import Books from '../pages/Books.vue'
 import BookEdit from '../pages/BookEdit.vue'
 import Categories from '../pages/Categories.vue'
 import Employees from '../pages/Employees.vue'
+import Orders from '../pages/Orders.vue'
 import Profile from '../pages/Profile.vue'
 
 const router = createRouter({
@@ -23,6 +24,7 @@ const router = createRouter({
         { path: 'books/create', component: BookEdit },
         { path: 'books/:id/edit', component: BookEdit },
         { path: 'categories', component: Categories },
+        { path: 'orders', component: Orders },
         { path: 'employees', component: Employees },
         { path: 'profile', component: Profile }
       ]
