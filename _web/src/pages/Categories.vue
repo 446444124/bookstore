@@ -16,14 +16,17 @@
       <el-table-column prop="sort" label="排序" width="120" />
       <el-table-column label="状态" width="140">
         <template #default="{ row }">
-          <el-switch
-            v-model="row.status"
-            :active-value="1"
-            :inactive-value="0"
-            active-text="正常"
-            inactive-text="禁用"
-            @change="onStatusChange(row, $event)"
-          />
+          <div class="state-cell">
+            <el-switch
+              v-model="row.status"
+              :active-value="1"
+              :inactive-value="0"
+              active-text="正常"
+              inactive-text="禁用"
+              @change="onStatusChange(row, $event)"
+            />
+            <el-tag size="small" :type="statusTagType(row.status)" effect="light">{{ statusText(row.status) }}</el-tag>
+          </div>
         </template>
       </el-table-column>
       <el-table-column prop="createTime" label="创建时间" width="200" show-overflow-tooltip />
@@ -89,6 +92,8 @@ const form = ref({
 const rules = {
   name: [{ required: true, message: '请输入分类名称', trigger: 'blur' }],
 }
+const statusText = (v) => (Number(v) === 1 ? '正常' : '禁用')
+const statusTagType = (v) => (Number(v) === 1 ? 'success' : 'info')
 
 const qs = () => {
   const p = new URLSearchParams()
@@ -228,6 +233,11 @@ onMounted(fetchData)
 }
 .table .el-table__row .op {
   display: flex;
+  gap: 8px;
+}
+.state-cell {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
 }
 .pager {

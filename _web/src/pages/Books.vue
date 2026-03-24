@@ -55,14 +55,17 @@
       <el-table-column prop="description" label="描述" show-overflow-tooltip />
       <el-table-column label="状态" width="140">
         <template #default="{ row }">
-          <el-switch
-            v-model="row.status"
-            :active-value="1"
-            :inactive-value="0"
-            active-text="起售"
-            inactive-text="禁用"
-            @change="onStatusChange(row, $event)"
-          />
+          <div class="state-cell">
+            <el-switch
+              v-model="row.status"
+              :active-value="1"
+              :inactive-value="0"
+              active-text="起售"
+              inactive-text="禁用"
+              @change="onStatusChange(row, $event)"
+            />
+            <el-tag size="small" :type="bookStatusTagType(row.status)" effect="light">{{ bookStatusText(row.status) }}</el-tag>
+          </div>
         </template>
       </el-table-column>
       <el-table-column label="操作" width="180">
@@ -115,6 +118,8 @@ const defaultCover = '/default-book-cover.svg'
 const selectedIds = ref([])
 const categories = ref([])
 const categoryMap = {}
+const bookStatusText = (v) => (Number(v) === 1 ? '起售' : '禁用')
+const bookStatusTagType = (v) => (Number(v) === 1 ? 'success' : 'info')
 
 const qs = () => {
   const p = new URLSearchParams()
@@ -295,6 +300,11 @@ onMounted(async () => {
 }
 .table .el-table__row .op {
   display: flex;
+  gap: 8px;
+}
+.state-cell {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
 }
 .pager {

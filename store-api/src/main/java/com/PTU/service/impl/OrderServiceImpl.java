@@ -3,9 +3,12 @@ package com.PTU.service.impl;
 import com.PTU.constant.MessageConstant;
 import com.PTU.entity.OrderDetail;
 import com.PTU.entity.Orders;
+import com.PTU.entity.WalletFlow;
 import com.PTU.exception.BaseException;
 import com.PTU.mapper.OrderDetailMapper;
 import com.PTU.mapper.OrderMapper;
+import com.PTU.mapper.UserMapper;
+import com.PTU.mapper.WalletFlowMapper;
 import com.PTU.result.PageResult;
 import com.PTU.service.OrderService;
 import com.PTU.vo.OrderItemVO;
@@ -19,7 +22,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Slf4j
@@ -30,6 +35,10 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     private OrderDetailMapper orderDetailMapper;
+    @Autowired
+    private UserMapper userMapper;
+    @Autowired
+    private WalletFlowMapper walletFlowMapper;
 
     @Override
     public PageResult pageQuery(int page, int pageSize, Integer status, Integer deliveryWay, String orderNumber, String phone) {
@@ -168,9 +177,24 @@ public class OrderServiceImpl implements OrderService {
         if (!Orders.RETURN_REQUESTED.equals(order.getStatus())) {
             throw new BaseException(MessageConstant.ORDER_STATUS_ERROR);
         }
+        if (order.getUserId() == null || order.getTotalAmount() == null || order.getTotalAmount().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            throw new BaseException("订单退款信息异常");
+        }
+        if (walletFlowMapper.countByBizNoAndType(order.getId(), WalletFlow.TYPE_REFUND) > 0) {
+            throw new BaseException("该订单已退款入账");
+        }
+        userMapper.addWalletBalance(order.getUserId(), order.getTotalAmount());
+        walletFlowMapper.insert(WalletFlow.builder()
+                .userId(order.getUserId())
+                .flowType(WalletFlow.TYPE_REFUND)
+                .amount(order.getTotalAmount())
+                .bizNo(order.getId())
+                .remark("退货退款入钱包")
+                .createTime(LocalDateTime.now())
+                .build());
         Orders upd = Orders.builder()
                 .id(id)
-                .status(Orders.CANCELLED)
+                .status(Orders.REFUNDED)
                 .payStatus(Orders.REFUND)
                 .cancelTime(LocalDateTime.now().toString())
                 .updateTime(LocalDateTime.now())
@@ -193,6 +217,16 @@ public class OrderServiceImpl implements OrderService {
                 .updateTime(LocalDateTime.now())
                 .build();
         orderMapper.updateById(upd);
+    }
+
+    @Override
+    public Map<Integer, Long> statusCount() {
+        Map<Integer, Long> m = new HashMap<>();
+        m.put(Orders.TO_BE_CONFIRMED, orderMapper.selectCount(new LambdaQueryWrapper<Orders>().eq(Orders::getStatus, Orders.TO_BE_CONFIRMED)));
+        m.put(Orders.CONFIRMED, orderMapper.selectCount(new LambdaQueryWrapper<Orders>().eq(Orders::getStatus, Orders.CONFIRMED)));
+        m.put(Orders.DELIVERY_IN_PROGRESS, orderMapper.selectCount(new LambdaQueryWrapper<Orders>().eq(Orders::getStatus, Orders.DELIVERY_IN_PROGRESS)));
+        m.put(Orders.RETURN_REQUESTED, orderMapper.selectCount(new LambdaQueryWrapper<Orders>().eq(Orders::getStatus, Orders.RETURN_REQUESTED)));
+        return m;
     }
 
     private Orders checkExists(String id) {

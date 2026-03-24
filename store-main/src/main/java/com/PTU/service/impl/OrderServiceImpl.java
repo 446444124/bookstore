@@ -51,6 +51,8 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
     private BookMapper bookMapper;
     @Autowired
     private CartService cartService;
+    @Autowired
+    private WalletFlowMapper walletFlowMapper;
     //TODO
     private Orders orders;
 
@@ -63,6 +65,9 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
             throw new BaseException(MessageConstant.LOGIN_FAILED);
         }
         log.info("用户{}提交订单，请求参数: {}", userId, ordersSubmitDTO);
+        if (ordersSubmitDTO.getPayWay() != 1 && ordersSubmitDTO.getPayWay() != 2) {
+            throw new BaseException("不支持的支付方式");
+        }
         Orders orders = new Orders();
         boolean isDelivery = ordersSubmitDTO.getDeliveryWay() == 1;
         if(isDelivery){
@@ -109,13 +114,34 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
         orders.setOrderTime(now);
         orders.setCreateTime(now);
         orders.setUpdateTime(now);
-        orders.setPayStatus(Orders.UN_PAID);
-        orders.setStatus(Orders.PENDING_PAYMENT);
+        boolean walletPay = ordersSubmitDTO.getPayWay() == 2;
+        if (walletPay) {
+            int deducted = userMapper.deductWalletBalance(userId, totalAmount);
+            if (deducted == 0) {
+                throw new BaseException(MessageConstant.WALLET_BALANCE_NOT_ENOUGH);
+            }
+            orders.setPayStatus(Orders.PAID);
+            orders.setStatus(Orders.TO_BE_CONFIRMED);
+            orders.setPayTime(now);
+        } else {
+            orders.setPayStatus(Orders.UN_PAID);
+            orders.setStatus(Orders.PENDING_PAYMENT);
+        }
         orders.setId(generateOrderNo(userId));
         orders.setUserId(userId);
         orders.setTotalAmount(totalAmount);
         this.orders = orders;
         log.info("生成订单号{}，总金额{}", orders.getId(), orders.getTotalAmount());
+        if (walletPay) {
+            walletFlowMapper.insert(WalletFlow.builder()
+                    .userId(userId)
+                    .flowType(WalletFlow.TYPE_CONSUME)
+                    .amount(totalAmount)
+                    .bizNo(orders.getId())
+                    .remark("钱包支付订单")
+                    .createTime(now)
+                    .build());
+        }
         orderMapper.insert(orders);
         for (OrderDetail od : orderDetailList) {
             od.setOrderId(orders.getId());
@@ -163,7 +189,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
             throw new BaseException(MessageConstant.LOGIN_FAILED);
         }
         Map<Integer, Long> counts = new HashMap<>();
-        for (int s = Orders.PENDING_PAYMENT; s <= Orders.RETURN_REQUESTED; s++) {
+        for (int s = Orders.PENDING_PAYMENT; s <= Orders.REFUNDED; s++) {
             long cnt = this.count(new LambdaQueryWrapper<Orders>()
                     .eq(Orders::getUserId, userId)
                     .eq(Orders::getStatus, s));

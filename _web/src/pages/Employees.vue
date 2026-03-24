@@ -32,14 +32,17 @@
       <el-table-column prop="phone" label="手机" width="160" />
       <el-table-column label="状态" width="180">
         <template #default="{ row }">
-          <el-switch
-            v-model="row.status"
-            :active-value="1"
-            :inactive-value="0"
-            active-text="正常"
-            inactive-text="禁用"
-            @change="onStatusChange(row, $event)"
-          />
+          <div class="state-cell">
+            <el-switch
+              v-model="row.status"
+              :active-value="1"
+              :inactive-value="0"
+              active-text="正常"
+              inactive-text="禁用"
+              @change="onStatusChange(row, $event)"
+            />
+            <el-tag size="small" :type="statusTagType(row.status)" effect="light">{{ statusText(row.status) }}</el-tag>
+          </div>
         </template>
       </el-table-column>
       <el-table-column prop="updateTime" label="更新时间" width="200" show-overflow-tooltip />
@@ -109,6 +112,8 @@ const qPhone = ref('')
 const qStatus = ref()
 const qPosition = ref('')
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\" viewBox=\"0 0 36 36\"><defs><style>.c{fill:%23e5e7eb}.d{fill:%239ca3af}</style></defs><circle cx=\"18\" cy=\"18\" r=\"18\" class=\"c\"/><circle cx=\"18\" cy=\"13\" r=\"6\" class=\"d\"/><path d=\"M6 30c2.8-6 9.2-7 12-7s9.2 1 12 7\" class=\"d\"/></svg>'
+const statusText = (v) => (Number(v) === 1 ? '正常' : '禁用')
+const statusTagType = (v) => (Number(v) === 1 ? 'success' : 'info')
 const form = ref({
   employeeId: undefined,
   empNo: '',
@@ -277,6 +282,11 @@ const onStatusChange = async (row, val) => {
 }
 .table .el-table__row .op {
   display: flex;
+  gap: 8px;
+}
+.state-cell {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
 }
 .emp-avatar {

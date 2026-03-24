@@ -4,7 +4,6 @@ import com.PTU.entity.User;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 import java.math.BigDecimal;
@@ -13,11 +12,5 @@ import java.math.BigDecimal;
 public interface UserMapper extends BaseMapper<User> {
     @Update("UPDATE user SET wallet_balance = IFNULL(wallet_balance, 0) + #{amount} WHERE user_id = #{userId}")
     int addWalletBalance(@Param("userId") Long userId, @Param("amount") BigDecimal amount);
-
-    @Update("UPDATE user SET wallet_balance = IFNULL(wallet_balance, 0) - #{amount} " +
-            "WHERE user_id = #{userId} AND IFNULL(wallet_balance, 0) >= #{amount}")
-    int deductWalletBalance(@Param("userId") Long userId, @Param("amount") BigDecimal amount);
-
-    @Select("SELECT IFNULL(wallet_balance, 0) FROM user WHERE user_id = #{userId}")
-    BigDecimal getWalletBalance(@Param("userId") Long userId);
 }
+

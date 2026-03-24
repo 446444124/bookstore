@@ -2,6 +2,7 @@ package com.PTU.service;
 
 import com.PTU.result.PageResult;
 import com.PTU.vo.OrderVO;
+import java.util.Map;
 
 public interface OrderService {
     PageResult pageQuery(int page, int pageSize, Integer status, Integer deliveryWay, String orderNumber, String phone);
@@ -19,4 +20,6 @@ public interface OrderService {
     void approveReturn(String id);
 
     void rejectReturn(String id, String reason);
+
+    Map<Integer, Long> statusCount();
 }

@@ -1,7 +1,10 @@
 package com.PTU.controller;
 
 import com.PTU.entity.Orders;
+import com.PTU.entity.WalletFlow;
 import com.PTU.mapper.OrderMapper;
+import com.PTU.mapper.UserMapper;
+import com.PTU.mapper.WalletFlowMapper;
 import com.PTU.utils.PayUtil;
 import com.alibaba.fastjson.JSONObject;
 import com.alipay.api.AlipayApiException;
@@ -11,7 +14,6 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
-import java.text.ParseException;
 import java.time.LocalDateTime;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
@@ -32,6 +34,10 @@ public class AliPayController {
     private PayUtil alipayUtil;
     @Autowired
     private OrderMapper orderMapper;
+    @Autowired
+    private UserMapper userMapper;
+    @Autowired
+    private WalletFlowMapper walletFlowMapper;
 
     @PostMapping("/notify")
     public String notify(HttpServletRequest request) {
@@ -55,6 +61,41 @@ public class AliPayController {
             String totalAmountStr = params.get("total_amount");
             if (outTradeNo == null || outTradeNo.isEmpty()) {
                 return "failure";
+            }
+            // 钱包充值回调：WALLET_userId_amountCent_timestamp
+            if (outTradeNo.startsWith("WALLET_")) {
+                String[] arr = outTradeNo.split("_");
+                if (arr.length < 4) {
+                    return "failure";
+                }
+                if (!"TRADE_SUCCESS".equals(tradeStatus) && !"TRADE_FINISHED".equals(tradeStatus)) {
+                    return "success";
+                }
+                Long userId;
+                BigDecimal amount;
+                try {
+                    userId = Long.valueOf(arr[1]);
+                    amount = new BigDecimal(arr[2]).divide(new BigDecimal("100"));
+                    BigDecimal paid = new BigDecimal(totalAmountStr);
+                    if (paid.compareTo(amount) != 0) {
+                        return "failure";
+                    }
+                } catch (Exception e) {
+                    return "failure";
+                }
+                if (walletFlowMapper.countByBizNoAndType(outTradeNo, WalletFlow.TYPE_RECHARGE) > 0) {
+                    return "success";
+                }
+                userMapper.addWalletBalance(userId, amount);
+                walletFlowMapper.insert(WalletFlow.builder()
+                        .userId(userId)
+                        .flowType(WalletFlow.TYPE_RECHARGE)
+                        .amount(amount)
+                        .bizNo(outTradeNo)
+                        .remark("支付宝钱包充值")
+                        .createTime(LocalDateTime.now())
+                        .build());
+                return "success";
             }
             Orders order = orderMapper.selectById(outTradeNo);
             if (order == null) {

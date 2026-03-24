@@ -6,6 +6,18 @@
         <el-menu-item index="/admin/books">图书管理</el-menu-item>
         <el-menu-item index="/admin/categories">分类管理</el-menu-item>
         <el-menu-item index="/admin/orders">订单管理</el-menu-item>
+        <el-menu-item index="/admin/orders/pending-confirm">
+          <span class="menu-with-dot">待接单<span v-if="showDot(2)" class="menu-badge">{{ badgeText(2) }}</span></span>
+        </el-menu-item>
+        <el-menu-item index="/admin/orders/pending-delivery">
+          <span class="menu-with-dot">待配送<span v-if="showDot(3)" class="menu-badge">{{ badgeText(3) }}</span></span>
+        </el-menu-item>
+        <el-menu-item index="/admin/orders/pending-complete">
+          <span class="menu-with-dot">待完成<span v-if="showDot(4)" class="menu-badge">{{ badgeText(4) }}</span></span>
+        </el-menu-item>
+        <el-menu-item index="/admin/orders/return-review">
+          <span class="menu-with-dot">退货申请<span v-if="showDot(7)" class="menu-badge">{{ badgeText(7) }}</span></span>
+        </el-menu-item>
         <el-menu-item index="/admin/employees">员工管理</el-menu-item>
       </el-menu>
     </el-aside>
@@ -50,6 +62,8 @@ const active = computed(() => route.path)
 const router = useRouter()
 const auth = useAuth()
 const user = ref(null)
+const statusCount = ref({})
+let timer = null
 const displayName = computed(() => {
   if (!user.value) return '—'
   return user.value.realName || user.value.name || '—'
@@ -69,6 +83,8 @@ onMounted(async () => {
       else if (u?.avatarUrl) avatarSrc.value = u.avatarUrl
     }
   }
+  loadStatusCount()
+  timer = window.setInterval(loadStatusCount, 15000)
 })
 const onAvatarUpdated = (e) => {
   const d = e?.detail
@@ -80,7 +96,22 @@ onMounted(() => {
 })
 onUnmounted(() => {
   window.removeEventListener('avatar-updated', onAvatarUpdated)
+  if (timer) window.clearInterval(timer)
 })
+const showDot = (s) => Number(statusCount.value?.[s] || 0) > 0
+const badgeText = (s) => {
+  const n = Number(statusCount.value?.[s] || 0)
+  if (n <= 0) return ''
+  return n > 99 ? '99+' : String(n)
+}
+const loadStatusCount = async () => {
+  try {
+    const resp = await http('/admin/order/statusCount', { method: 'GET', json: false })
+    if (resp && resp.code === 1) {
+      statusCount.value = resp.data || {}
+    }
+  } catch (_) {}
+}
 const onLogout = async () => {
   await http('/admin/admin/logout', { method: 'POST' })
   clearAuth()
@@ -170,6 +201,23 @@ const goProfile = () => {
 .user-info .line {
   color: var(--admin-sub);
   font-size: 12px;
+}
+.menu-with-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.menu-badge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+  font-weight: 600;
 }
 
 @media (max-width: 920px) {

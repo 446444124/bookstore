@@ -11,6 +11,7 @@
         <el-option label="退货审核中" :value="7" />
         <el-option label="已完成" :value="5" />
         <el-option label="已取消" :value="6" />
+        <el-option label="已退款" :value="8" />
       </el-select>
       <el-select v-model="qDeliveryWay" placeholder="订单类型" clearable class="status">
         <el-option label="自提" :value="0" />
@@ -35,10 +36,14 @@
         <template #default="{ row }">¥ {{ toMoney(row.totalAmount) }}</template>
       </el-table-column>
       <el-table-column prop="status" label="状态" width="100">
-        <template #default="{ row }">{{ statusText(row.status) }}</template>
+        <template #default="{ row }">
+          <el-tag :type="statusTagType(row.status)" effect="light">{{ statusText(row.status) }}</el-tag>
+        </template>
       </el-table-column>
       <el-table-column prop="deliveryWay" label="类型" width="90">
-        <template #default="{ row }">{{ deliveryWayText(row.deliveryWay) }}</template>
+        <template #default="{ row }">
+          <el-tag :type="deliveryWayTagType(row.deliveryWay)" effect="light">{{ deliveryWayText(row.deliveryWay) }}</el-tag>
+        </template>
       </el-table-column>
       <el-table-column prop="consignee" label="收货人" width="120" />
       <el-table-column prop="phone" label="手机号" width="140" />
@@ -76,10 +81,22 @@
         <div class="detail-grid">
           <div>订单号：{{ detail.orderNumber || detail.id }}</div>
           <div>下单时间：{{ formatTime(detail.orderTime) }}</div>
-          <div>状态：{{ statusText(detail.status) }}</div>
-          <div>支付：{{ payText(detail.payStatus) }}</div>
-          <div>类型：{{ deliveryWayText(detail.deliveryWay) }}</div>
-          <div>支付方式：{{ payWayText(detail.payWay) }}</div>
+          <div class="status-line">
+            状态：
+            <el-tag size="small" :type="statusTagType(detail.status)" effect="light">{{ statusText(detail.status) }}</el-tag>
+          </div>
+          <div class="status-line">
+            支付：
+            <el-tag size="small" :type="payTagType(detail.payStatus)" effect="light">{{ payText(detail.payStatus) }}</el-tag>
+          </div>
+          <div class="status-line">
+            类型：
+            <el-tag size="small" :type="deliveryWayTagType(detail.deliveryWay)" effect="light">{{ deliveryWayText(detail.deliveryWay) }}</el-tag>
+          </div>
+          <div class="status-line">
+            支付方式：
+            <el-tag size="small" :type="payWayTagType(detail.payWay)" effect="light">{{ payWayText(detail.payWay) }}</el-tag>
+          </div>
           <div>收货人：{{ detail.consignee || '-' }}</div>
           <div>手机号：{{ detail.phone || '-' }}</div>
           <div class="wide">地址：{{ detail.address || '-' }}</div>
@@ -101,9 +118,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { http } from '../api/http'
+const route = useRoute()
 
 const loading = ref(false)
 const items = ref([])
@@ -119,10 +138,28 @@ const detail = ref(null)
 
 const toMoney = (v) => (Number(v || 0)).toFixed(2)
 const formatTime = (v) => (v ? String(v).replace('T', ' ').slice(0, 19) : '')
-const statusText = (s) => ({ 1: '待付款', 2: '待接单', 3: '已接单', 4: '派送中', 5: '已完成', 6: '已取消', 7: '退货审核中' }[s] || '未知')
+const statusText = (s) => ({ 1: '待付款', 2: '待接单', 3: '已接单', 4: '派送中', 5: '已完成', 6: '已取消', 7: '退货审核中', 8: '已退款' }[s] || '未知')
+const statusTagType = (s) => ({ 1: 'warning', 2: 'primary', 3: 'primary', 4: 'warning', 5: 'success', 6: 'info', 7: 'danger', 8: 'success' }[s] || 'info')
 const deliveryWayText = (v) => ({ 0: '自提', 1: '配送' }[v] ?? '未知')
+const deliveryWayTagType = (v) => ({ 0: 'info', 1: 'primary' }[v] ?? 'info')
 const payText = (s) => ({ 0: '未支付', 1: '已支付', 2: '退款' }[s] ?? '未知')
-const payWayText = (v) => ({ 1: '支付宝' }[v] ?? '未知')
+const payTagType = (s) => ({ 0: 'warning', 1: 'success', 2: 'info' }[s] ?? 'info')
+const payWayText = (v) => ({ 1: '支付宝', 2: '钱包支付' }[v] ?? '未知')
+const payWayTagType = (v) => ({ 1: 'primary', 2: 'success' }[v] ?? 'info')
+const syncStatusFromRoute = () => {
+  const p = route.path || ''
+  if (p.endsWith('/pending-confirm')) qStatus.value = 2
+  else if (p.endsWith('/pending-delivery')) qStatus.value = 3
+  else if (p.endsWith('/pending-complete')) qStatus.value = 4
+  else if (p.endsWith('/return-review')) qStatus.value = 7
+  else {
+    // 回到订单总菜单时恢复顶部筛选默认态
+    qStatus.value = undefined
+    qDeliveryWay.value = undefined
+    qOrderNo.value = ''
+    qPhone.value = ''
+  }
+}
 
 const qs = () => {
   const p = new URLSearchParams()
@@ -216,7 +253,15 @@ const onSearch = () => {
   fetchData()
 }
 
-onMounted(fetchData)
+onMounted(() => {
+  syncStatusFromRoute()
+  fetchData()
+})
+watch(() => route.path, () => {
+  syncStatusFromRoute()
+  page.value = 1
+  fetchData()
+})
 </script>
 
 <style>
@@ -247,4 +292,9 @@ onMounted(fetchData)
   margin-bottom: 10px;
 }
 .detail-grid .wide { grid-column: 1 / span 2; }
+.status-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
 </style>

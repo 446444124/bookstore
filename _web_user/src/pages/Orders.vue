@@ -26,6 +26,7 @@
         </el-radio-button>
         <el-radio-button :label="5">已完成</el-radio-button>
         <el-radio-button :label="6">已取消</el-radio-button>
+        <el-radio-button :label="8">已退款</el-radio-button>
       </el-radio-group>
       <el-radio-group v-model="deliveryWay" @change="onDeliveryWayChange" class="type-filter">
         <el-radio-button :label="''">全部类型</el-radio-button>
@@ -42,13 +43,19 @@
         <template #default="{ row }">¥ {{ toMoney(row.totalAmount) }}</template>
       </el-table-column>
       <el-table-column prop="status" label="状态" width="120">
-        <template #default="{ row }">{{ statusText(row.status) }}</template>
+        <template #default="{ row }">
+          <el-tag :type="statusTagType(row.status)" effect="light">{{ statusText(row.status) }}</el-tag>
+        </template>
       </el-table-column>
       <el-table-column prop="deliveryWay" label="订单类型" width="100">
-        <template #default="{ row }">{{ deliveryWayText(row.deliveryWay) }}</template>
+        <template #default="{ row }">
+          <el-tag :type="deliveryWayTagType(row.deliveryWay)" effect="light">{{ deliveryWayText(row.deliveryWay) }}</el-tag>
+        </template>
       </el-table-column>
       <el-table-column prop="payStatus" label="支付" width="100">
-        <template #default="{ row }">{{ payText(row.payStatus) }}</template>
+        <template #default="{ row }">
+          <el-tag :type="payTagType(row.payStatus)" effect="light">{{ payText(row.payStatus) }}</el-tag>
+        </template>
       </el-table-column>
       <el-table-column label="操作" width="320">
         <template #default="{ row }">
@@ -79,11 +86,24 @@
           <div>订单号：{{ detail.orderNumber }}</div>
           <div>下单时间：{{ formatTime(detail.orderTime) }}</div>
           <div>订单金额：¥ {{ toMoney(detail.totalAmount) }}</div>
-          <div>状态：{{ statusText(detail.status) }} / {{ payText(detail.payStatus) }}</div>
-          <div>订单类型：{{ deliveryWayText(detail.deliveryWay) }}</div>
-          <div>支付方式：{{ payWayText(detail.payWay) }}</div>
+          <div class="status-line">
+            状态：
+            <el-tag size="small" :type="statusTagType(detail.status)" effect="light">{{ statusText(detail.status) }}</el-tag>
+            <el-tag size="small" :type="payTagType(detail.payStatus)" effect="light">{{ payText(detail.payStatus) }}</el-tag>
+          </div>
+          <div class="status-line">
+            订单类型：
+            <el-tag size="small" :type="deliveryWayTagType(detail.deliveryWay)" effect="light">{{ deliveryWayText(detail.deliveryWay) }}</el-tag>
+          </div>
+          <div class="status-line">
+            支付方式：
+            <el-tag size="small" :type="payWayTagType(detail.payWay)" effect="light">{{ payWayText(detail.payWay) }}</el-tag>
+          </div>
           <div>支付时间：{{ formatTime(detail.payTime) || '-' }}</div>
-          <div>配送时效：{{ deliveryStatusText(detail.deliveryStatus) }}</div>
+          <div class="status-line">
+            配送时效：
+            <el-tag size="small" :type="deliveryStatusTagType(detail.deliveryStatus)" effect="light">{{ deliveryStatusText(detail.deliveryStatus) }}</el-tag>
+          </div>
           <div>预计送达：{{ formatTime(detail.estimatedDeliveryTime) || '-' }}</div>
           <div>实际送达：{{ formatTime(detail.deliveryTime) || '-' }}</div>
           <div>收货人：{{ detail.consignee || '-' }}</div>
@@ -141,27 +161,47 @@ const formatTime = (s) => {
   try { return String(s).replace('T', ' ').slice(0, 19) } catch (_) { return String(s) }
 }
 const statusText = (s) => {
-  const map = { 1: '待付款', 2: '待接单', 3: '已接单', 4: '派送中', 5: '已完成', 6: '已取消', 7: '退货审核中' }
+  const map = { 1: '待付款', 2: '待接单', 3: '已接单', 4: '派送中', 5: '已完成', 6: '已取消', 7: '退货审核中', 8: '已退款' }
   return map[s] || '未知'
+}
+const statusTagType = (s) => {
+  const map = { 1: 'warning', 2: 'primary', 3: 'primary', 4: 'warning', 5: 'success', 6: 'info', 7: 'danger', 8: 'success' }
+  return map[s] || 'info'
 }
 const payText = (s) => {
   const map = { 0: '未支付', 1: '已支付', 2: '退款' }
   return map[s] != null ? map[s] : '未知'
 }
+const payTagType = (s) => {
+  const map = { 0: 'warning', 1: 'success', 2: 'info' }
+  return map[s] ?? 'info'
+}
 const deliveryWayText = (v) => {
   const map = { 0: '自提', 1: '配送' }
   return map[v] != null ? map[v] : '未知'
 }
+const deliveryWayTagType = (v) => {
+  const map = { 0: 'info', 1: 'primary' }
+  return map[v] ?? 'info'
+}
 const payWayText = (v) => {
-  const map = { 1: '支付宝' }
+  const map = { 1: '支付宝', 2: '钱包支付' }
   return map[v] != null ? map[v] : '未知'
+}
+const payWayTagType = (v) => {
+  const map = { 1: 'primary', 2: 'success' }
+  return map[v] ?? 'info'
 }
 const deliveryStatusText = (v) => {
   const map = { 0: '定时送达', 1: '立即送出' }
   return map[v] != null ? map[v] : '-'
 }
+const deliveryStatusTagType = (v) => {
+  const map = { 0: 'info', 1: 'warning' }
+  return map[v] ?? 'info'
+}
 const showDot = (s) => {
-  if (s === 5 || s === 6) return false
+  if (s === 5 || s === 6 || s === 8) return false
   return Number(statusCount.value?.[s] || 0) > 0
 }
 const loadStatusCount = async () => {
@@ -455,6 +495,11 @@ onMounted(() => {
 }
 .detail-head .wide {
   grid-column: 1 / span 2;
+}
+.status-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 .cover {
   width: 64px;

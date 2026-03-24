@@ -70,6 +70,7 @@
         <el-form-item label="付款方式" prop="payWay">
           <el-select v-model="orderForm.payWay" placeholder="请选择付款方式">
             <el-option :value="1" label="支付宝" />
+            <el-option :value="2" :label="`钱包支付（余额 ¥${toMoney(walletBalance)}）`" />
           </el-select>
         </el-form-item>
         <el-form-item label="备注">
@@ -212,6 +213,7 @@ const orderDialogVisible = ref(false)
 const orderFormRef = ref()
 const ordering = ref(false)
 const addresses = ref([])
+const walletBalance = ref(0)
 const orderForm = ref({
   addressBookId: '',
   payWay: 1,
@@ -288,8 +290,26 @@ const loadAddresses = async () => {
     addresses.value = []
   }
 }
+const loadWalletBalance = async () => {
+  try {
+    const token = localStorage.getItem('token') || ''
+    const resp = await fetch('/user/user/wallet/balance', {
+      method: 'GET',
+      headers: token ? { authentication: token } : {}
+    })
+    const ct = resp.headers.get('content-type') || ''
+    let data = {}
+    if (ct.includes('application/json')) {
+      try { data = await resp.json() } catch (_) {}
+    }
+    if (resp.ok) {
+      const d = data?.data ?? 0
+      walletBalance.value = Number(d || 0)
+    }
+  } catch (_) {}
+}
 const openOrder = async () => {
-  await loadAddresses()
+  await Promise.all([loadAddresses(), loadWalletBalance()])
   const def = addresses.value.find(a => a.isDefault === 1) || addresses.value[0]
   orderForm.value.addressBookId = def ? def.id : ''
   orderForm.value.deliveryWay = 1
@@ -384,9 +404,10 @@ const onGoPay = async () => {
         orderDialogVisible.value = false
         loadCart()
       } else {
-        ElMessage.success('订单已创建')
+        ElMessage.success('钱包支付成功，订单已创建')
         orderDialogVisible.value = false
         loadCart()
+        loadWalletBalance()
       }
     } else {
       ElMessage.error(data?.msg || '下单失败')

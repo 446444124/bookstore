@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/admin/order")
@@ -34,6 +35,12 @@ public class OrderController {
                                    @RequestParam(required = false) String phone) {
         PageResult pageResult = orderService.pageQuery(page, pageSize, status, deliveryWay, orderNumber, phone);
         return Result.success(pageResult);
+    }
+
+    @GetMapping("/statusCount")
+    @ApiOperation("订单状态数量统计（待接单/待配送/待完成）")
+    public Result<Map<Integer, Long>> statusCount() {
+        return Result.success(orderService.statusCount());
     }
 
     @GetMapping("/detail/{id}")

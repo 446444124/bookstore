@@ -48,15 +48,13 @@ public class PayUtil {
                 ? ("校园书店订单-" + outTradeNo)
                 : subject;
         String amountStr = totalAmount.setScale(2, BigDecimal.ROUND_HALF_UP).toPlainString();
-        String body = "";
-        String bizContent = "{"
-                + "\"out_trade_no\":\"" + outTradeNo + "\","
-                + "\"total_amount\":\"" + amountStr + "\","
-                + "\"subject\":\"" + safeSubject + "\","
-                + "\"body\":\"" + body + "\","
-                + "\"product_code\":\"FAST_INSTANT_TRADE_PAY\""
-                + "}";
-        alipayRequest.setBizContent(bizContent);
+        JSONObject biz = new JSONObject();
+        biz.put("out_trade_no", outTradeNo);
+        biz.put("total_amount", amountStr);
+        biz.put("subject", safeSubject);
+        biz.put("body", "");
+        biz.put("product_code", "FAST_INSTANT_TRADE_PAY");
+        alipayRequest.setBizContent(biz.toJSONString());
 
         //请求
         String result = alipayClient.pageExecute(alipayRequest).getBody();

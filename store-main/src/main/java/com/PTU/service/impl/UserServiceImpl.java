@@ -18,6 +18,8 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
+import java.math.BigDecimal;
+
 @Service
 @Slf4j
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
@@ -92,8 +94,26 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         //对象属性拷贝
         User newuser = new User();
         BeanUtils.copyProperties(tuser,newuser);
+        newuser.setWalletBalance(BigDecimal.ZERO);
         //4.注册用户
         this.save(newuser);
         return Result.success();
+    }
+
+    @Override
+    public BigDecimal getWalletBalance(Long userId) {
+        if (userId == null) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal balance = this.baseMapper.getWalletBalance(userId);
+        return balance == null ? BigDecimal.ZERO : balance;
+    }
+
+    @Override
+    public void addWalletBalance(Long userId, BigDecimal amount) {
+        if (userId == null || amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            return;
+        }
+        this.baseMapper.addWalletBalance(userId, amount);
     }
 }

@@ -25,6 +25,10 @@ const router = createRouter({
         { path: 'books/:id/edit', component: BookEdit },
         { path: 'categories', component: Categories },
         { path: 'orders', component: Orders },
+        { path: 'orders/pending-confirm', component: Orders },
+        { path: 'orders/pending-delivery', component: Orders },
+        { path: 'orders/pending-complete', component: Orders },
+        { path: 'orders/return-review', component: Orders },
         { path: 'employees', component: Employees },
         { path: 'profile', component: Profile }
       ]

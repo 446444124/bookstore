@@ -4,6 +4,7 @@
       <div class="title">个人信息</div>
       <div class="ops">
         <el-button @click="goHome">返回首页</el-button>
+        <el-button type="success" @click="openRecharge">钱包充值</el-button>
         <el-button v-if="!isEditing" type="primary" @click="startEdit">编辑</el-button>
         <template v-else>
           <el-button @click="onCancel">取消</el-button>
@@ -29,6 +30,10 @@
           </el-upload>
         </div>
         <div class="info-block">
+          <div class="wallet-bar">
+            <span>钱包余额</span>
+            <strong>¥ {{ toMoney(walletBalance) }}</strong>
+          </div>
           <el-form ref="formRef" :model="form" :rules="rules" label-width="100px" class="profile-form">
             <el-form-item label="学号">
               <el-input v-model="form.studentId" disabled />
@@ -95,6 +100,39 @@
       </el-table>
       <div v-else class="addr-empty">暂无地址</div>
     </div>
+    <div class="card flow-section">
+      <div class="addr-header">
+        <div class="addr-title">钱包流水</div>
+      </div>
+      <el-table v-if="walletFlows.length" :data="walletFlows" border style="width: 100%">
+        <el-table-column prop="createTime" label="时间" min-width="170">
+          <template #default="{ row }">{{ formatTime(row.createTime) }}</template>
+        </el-table-column>
+        <el-table-column prop="flowType" label="类型" width="110">
+          <template #default="{ row }">{{ flowTypeText(row.flowType) }}</template>
+        </el-table-column>
+        <el-table-column prop="amount" label="金额" width="120">
+          <template #default="{ row }">
+            <span :class="Number(row.flowType) === 2 ? 'amt-out' : 'amt-in'">
+              {{ Number(row.flowType) === 2 ? '-' : '+' }}¥ {{ toMoney(row.amount) }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="bizNo" label="业务单号" min-width="180" />
+        <el-table-column prop="remark" label="备注" min-width="140" />
+      </el-table>
+      <div v-else class="addr-empty">暂无流水记录</div>
+      <div class="flow-pager" v-if="walletFlowTotal > walletFlowPageSize">
+        <el-pagination
+          background
+          layout="prev, pager, next, total"
+          :total="walletFlowTotal"
+          :page-size="walletFlowPageSize"
+          :current-page="walletFlowPage"
+          @current-change="onWalletFlowPageChange"
+        />
+      </div>
+    </div>
   </div>
   <FloatingCartButton />
   <el-dialog v-model="addrDialogVisible" title="地址" width="640px">
@@ -143,6 +181,20 @@
       </div>
     </template>
   </el-dialog>
+  <el-dialog v-model="rechargeVisible" title="钱包充值" width="420px">
+    <el-form label-width="90px">
+      <el-form-item label="充值金额">
+        <el-input-number v-model="rechargeAmount" :min="0.01" :step="10" :precision="2" style="width: 100%" />
+      </el-form-item>
+      <div class="recharge-tip">仅支持支付宝充值</div>
+    </el-form>
+    <template #footer>
+      <div class="dialog-ops">
+        <el-button @click="rechargeVisible = false">取消</el-button>
+        <el-button type="primary" @click="onRechargePay">去充值</el-button>
+      </div>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup>
@@ -169,6 +221,19 @@ const form = ref({
   avatar: ''
 })
 const majors = ref([])
+const walletBalance = ref(0)
+const rechargeVisible = ref(false)
+const rechargeAmount = ref(10)
+const toMoney = (v) => (Number(v || 0)).toFixed(2)
+const walletFlows = ref([])
+const walletFlowPage = ref(1)
+const walletFlowPageSize = ref(8)
+const walletFlowTotal = ref(0)
+const flowTypeText = (v) => ({ 1: '充值', 2: '消费', 3: '退款' }[Number(v)] || '未知')
+const formatTime = (s) => {
+  if (!s) return '-'
+  return String(s).replace('T', ' ').slice(0, 19)
+}
 const rules = {
   realName: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
   username: [{ required: true, message: '请输入昵称', trigger: 'blur' }],
@@ -247,12 +312,110 @@ const loadProfile = async () => {
       form.value.gender = d.gender === 0 ? 0 : 1
       form.value.majorId = d.majorId || ''
       form.value.avatar = d.avatar || d.avatarUrl || ''
+      walletBalance.value = Number(d.walletBalance || 0)
       originalForm.value = JSON.parse(JSON.stringify(form.value))
     } else {
       ElMessage.error('加载个人信息失败')
     }
   } catch (_) {
     ElMessage.error('加载个人信息失败')
+  }
+}
+const loadWalletBalance = async () => {
+  try {
+    const token = localStorage.getItem('token') || ''
+    const resp = await fetch('/user/user/wallet/balance', {
+      method: 'GET',
+      headers: token ? { authentication: token } : {}
+    })
+    const ct = resp.headers.get('content-type') || ''
+    let data = {}
+    if (ct.includes('application/json')) {
+      try { data = await resp.json() } catch (_) {}
+    }
+    if (resp.ok) {
+      walletBalance.value = Number(data?.data || 0)
+    }
+  } catch (_) {}
+}
+const loadWalletFlows = async () => {
+  try {
+    const token = localStorage.getItem('token') || ''
+    const resp = await fetch(`/user/user/wallet/flows?page=${walletFlowPage.value}&pageSize=${walletFlowPageSize.value}`, {
+      method: 'GET',
+      headers: token ? { authentication: token } : {}
+    })
+    const ct = resp.headers.get('content-type') || ''
+    let data = {}
+    if (ct.includes('application/json')) {
+      try { data = await resp.json() } catch (_) {}
+    }
+    if (resp.ok) {
+      const d = data?.data || {}
+      walletFlowTotal.value = Number(d?.total || 0)
+      walletFlows.value = Array.isArray(d?.records) ? d.records : []
+    } else {
+      walletFlowTotal.value = 0
+      walletFlows.value = []
+    }
+  } catch (_) {
+    walletFlowTotal.value = 0
+    walletFlows.value = []
+  }
+}
+const onWalletFlowPageChange = (p) => {
+  walletFlowPage.value = p
+  loadWalletFlows()
+}
+const openRecharge = () => {
+  rechargeVisible.value = true
+}
+const onRechargePay = async () => {
+  const amount = Number(rechargeAmount.value || 0)
+  if (amount < 0.01) {
+    ElMessage.warning('充值金额至少0.01元')
+    return
+  }
+  try {
+    const token = localStorage.getItem('token') || ''
+    const payWin = window.open('', '_blank')
+    const resp = await fetch(`/user/user/wallet/rechargePay?amount=${encodeURIComponent(amount.toFixed(2))}`, {
+      method: 'GET',
+      headers: token ? { authentication: token } : {}
+    })
+    const ct = resp.headers.get('content-type') || ''
+    const text = await resp.text()
+    const body = String(text || '').trim()
+    const looksHtml = ct.includes('text/html') || body.startsWith('<') || body.toLowerCase().includes('<html')
+    if (payWin) {
+      if (looksHtml) {
+        payWin.document.open()
+        payWin.document.write(body)
+        payWin.document.close()
+      } else {
+        const unescaped = body
+          .replace(/\\+"/g, '"')
+          .replace(/\\+'/g, "'")
+          .replace(/\\\\/g, '\\')
+        const clean = unescaped.replace(/^"+|"+$/g, '').replace(/^'+|'+$/g, '')
+        const m = clean.match(/^redirect\s*:\s*(.+)$/i)
+        const candidate = m && m[1] ? m[1].trim() : clean
+        const raw = candidate.replace(/^"+|"+$/g, '').replace(/^'+|'+$/g, '')
+        const matched = raw.match(/https?:\/\/[^\s"'<>]+/i)
+        const url = matched ? matched[0] : raw
+        if (/^https?:\/\//i.test(url)) {
+          payWin.location.href = url
+        } else {
+          payWin.document.open()
+          payWin.document.write(`<html><body><h3>拉起支付失败</h3><p>${url || '返回内容格式不正确'}</p></body></html>`)
+          payWin.document.close()
+        }
+      }
+    }
+    rechargeVisible.value = false
+    ElMessage.success('已拉起支付宝充值页面，支付完成后请刷新余额')
+  } catch (_) {
+    ElMessage.error('拉起充值失败')
   }
 }
 const onAvatarChange = async (file) => {
@@ -548,6 +711,8 @@ const deleteAddr = async (row) => {
 onMounted(() => {
   loadMajors()
   loadProfile()
+  loadWalletBalance()
+  loadWalletFlows()
   loadAddresses()
 })
 </script>
@@ -597,6 +762,19 @@ onMounted(() => {
   object-fit: cover;
 }
 .info-block { width: 100%; }
+.wallet-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px dashed #d8deea;
+  border-radius: 8px;
+  background: #fafcff;
+}
+.wallet-bar strong {
+  font-size: 18px;
+}
 .profile-card .el-card__body { padding: 8px 16px; }
 .address-section {
   margin-top: 16px;
@@ -619,5 +797,26 @@ onMounted(() => {
   white-space: normal;
   word-break: break-word;
   line-height: 20px;
+}
+.recharge-tip {
+  color: #6b7280;
+  font-size: 12px;
+  margin-top: -6px;
+}
+.flow-section {
+  margin-top: 16px;
+}
+.amt-in {
+  color: #3f8f6b;
+  font-weight: 600;
+}
+.amt-out {
+  color: #c85c5c;
+  font-weight: 600;
+}
+.flow-pager {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
 }
 </style>
