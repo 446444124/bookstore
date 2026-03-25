@@ -2,6 +2,7 @@ package com.PTU.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
  * 购物车
  */
 @Data
+@TableName("cart")
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
