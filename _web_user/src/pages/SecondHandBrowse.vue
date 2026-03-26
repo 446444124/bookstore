@@ -135,17 +135,23 @@ onMounted(load)
 }
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, 220px);
+  justify-content: start;
+  align-items: start;
+  gap: 18px;
 }
 .card {
   cursor: pointer;
   border-radius: 12px;
+  width: 220px;
+  box-sizing: border-box;
 }
 .cover {
   width: 100%;
-  height: 180px;
-  object-fit: cover;
+  aspect-ratio: 3 / 4;
+  height: auto;
+  object-fit: contain;
+  display: block;
   border-radius: 8px;
   background: #f1f5f9;
 }

@@ -45,11 +45,27 @@ public class SecondHandListing implements Serializable {
     @TableField("condition_grade")
     private Integer conditionGrade;
 
+    /** 成色档位ID（可配置） */
+    @TableField("grade_id")
+    private Long gradeId;
+
+    /** 成色档位名称快照 */
+    @TableField("grade_name")
+    private String gradeName;
+
     @TableField("price_ratio")
     private Integer priceRatio;
 
     @TableField("ref_book_price")
     private BigDecimal refBookPrice;
+
+    /** 平台回收打款金额快照 */
+    @TableField("recycle_price")
+    private BigDecimal recyclePrice;
+
+    /** 服务费百分比快照 */
+    @TableField("service_fee_percent")
+    private BigDecimal serviceFeePercent;
 
     @TableField("sale_price")
     private BigDecimal salePrice;

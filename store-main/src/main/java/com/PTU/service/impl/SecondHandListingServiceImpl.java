@@ -159,9 +159,7 @@ public class SecondHandListingServiceImpl implements SecondHandListingService {
         if (l == null || l.getStatus() == null || l.getStatus() != SecondHandConstants.STATUS_ON_SALE) {
             throw new BaseException("该二手书不可购买");
         }
-        if (buyerUserId.equals(l.getSellerUserId())) {
-            throw new BaseException("不能购买自己上架的二手书");
-        }
+        // 中间商模式：条目审核通过后已视为平台收购，原提交用户也允许购买，不再限制「不能买自己上架」。
         int n = secondHandListingMapper.tryLockForOrder(listingId, orderId);
         if (n != 1) {
             throw new BaseException("手慢一步，该二手书已被抢或下架");
@@ -175,73 +173,7 @@ public class SecondHandListingServiceImpl implements SecondHandListingService {
             return;
         }
         secondHandListingMapper.finalizeSoldByPendingOrder(orderId, buyerUserId);
-        creditSellerForSecondHandOrder(orderId);
-    }
-
-    /**
-     * 二手书订单已支付后，将成交金额记入卖家钱包（与支付宝回调、同步跳转、钱包支付共用；幂等防重复打款）。
-     */
-    private void creditSellerForSecondHandOrder(String orderId) {
-        if (orderId == null) {
-            return;
-        }
-        SecondHandOrder sh = null;
-        try {
-            sh = secondHandOrderMapper.selectById(orderId);
-        } catch (Exception e) {
-            log.warn("second_hand_order 查询失败 orderId={}: {}", orderId, e.toString());
-        }
-        if (sh != null) {
-            creditSellerIfPaid(sh.getUserId(), sh.getListingId(), sh.getPayStatus(), sh.getTotalAmount(), orderId);
-            return;
-        }
-        Orders order = orderMapper.selectById(orderId);
-        if (order == null || order.getSecondHandListingId() == null) {
-            return;
-        }
-        creditSellerIfPaid(order.getUserId(), order.getSecondHandListingId(), order.getPayStatus(), order.getTotalAmount(), orderId);
-    }
-
-    private void creditSellerIfPaid(Long buyerUserId, Long listingId, Number payStatus, BigDecimal amount, String orderId) {
-        if (listingId == null) {
-            log.warn("二手书卖家入账跳过：listingId 为空，orderId={}", orderId);
-            return;
-        }
-        if (!Orders.isPaid(payStatus)) {
-            log.warn("二手书卖家入账跳过：支付状态非已支付 payStatus={} orderId={}", payStatus, orderId);
-            return;
-        }
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            log.warn("二手书卖家入账跳过：金额无效 amount={} orderId={}", amount, orderId);
-            return;
-        }
-        String bizNo = orderId + "_SH_SELLER";
-        if (walletFlowMapper.countByBizNoAndType(bizNo, WalletFlow.TYPE_SELLER_INCOME) > 0) {
-            return;
-        }
-        SecondHandListing listing = secondHandListingMapper.selectById(listingId);
-        if (listing == null || listing.getSellerUserId() == null) {
-            log.warn("二手书卖家入账跳过：条目或卖家不存在 listingId={} orderId={}", listingId, orderId);
-            return;
-        }
-        Long sellerId = listing.getSellerUserId();
-        if (sellerId.equals(buyerUserId)) {
-            log.warn("二手书卖家入账跳过：买卖双方为同一人 orderId={}", orderId);
-            return;
-        }
-        int n = userMapper.addWalletBalance(sellerId, amount);
-        if (n <= 0) {
-            log.error("二手书卖家钱包入账失败：user 无记录或未更新 sellerId={} orderId={}", sellerId, orderId);
-            return;
-        }
-        walletFlowMapper.insert(WalletFlow.builder()
-                .userId(sellerId)
-                .flowType(WalletFlow.TYPE_SELLER_INCOME)
-                .amount(amount)
-                .bizNo(bizNo)
-                .remark("二手书售出入账（订单 " + orderId + "）")
-                .createTime(LocalDateTime.now())
-                .build());
+        // 中间商模式：卖家（提交用户）已在审核通过时完成平台回收打款，成交后不再二次结算给卖家。
     }
 
     @Override
@@ -289,7 +221,9 @@ public class SecondHandListingServiceImpl implements SecondHandListingService {
                 .userNote(l.getUserNote())
                 .userConditionImages(SecondHandListingImageJson.parse(l.getUserConditionImages()))
                 .conditionGrade(l.getConditionGrade())
-                .conditionGradeText(SecondHandConstants.gradeText(l.getConditionGrade()))
+                .conditionGradeText((l.getGradeName() != null && !l.getGradeName().trim().isEmpty())
+                        ? l.getGradeName().trim()
+                        : SecondHandConstants.gradeText(l.getConditionGrade()))
                 .priceRatio(l.getPriceRatio())
                 .refBookPrice(l.getRefBookPrice())
                 .salePrice(l.getSalePrice())

@@ -315,8 +315,10 @@ onMounted(loadDetail)
 }
 .cover {
   width: 100%;
-  max-height: 400px;
-  object-fit: cover;
+  aspect-ratio: 3 / 4;
+  max-height: 420px;
+  object-fit: contain;
+  display: block;
   border-radius: 12px;
   background: #f1f5f9;
 }

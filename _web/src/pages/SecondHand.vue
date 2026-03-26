@@ -91,11 +91,13 @@
           </el-radio-group>
         </el-form-item>
         <el-form-item v-if="approve" label="成色">
-          <el-select v-model="conditionGrade" placeholder="选择成色（决定折价比例）" style="width: 100%">
-            <el-option label="近新（约原价 78%）" :value="1" />
-            <el-option label="良好（约 62%）" :value="2" />
-            <el-option label="一般（约 48%）" :value="3" />
-            <el-option label="较差（约 32%）" :value="4" />
+          <el-select v-model="gradeId" placeholder="选择成色档位（决定回收价）" style="width: 100%">
+            <el-option
+              v-for="g in gradeOptions"
+              :key="String(g.id)"
+              :label="`${g.name}（回收 ${toPercent(g.recyclePercent)}）`"
+              :value="g.id"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="备注">
@@ -126,7 +128,8 @@ const qStatus = ref(undefined)
 const dlg = ref(false)
 const current = ref(null)
 const approve = ref(true)
-const conditionGrade = ref(1)
+const gradeId = ref(undefined)
+const gradeOptions = ref([])
 const staffRemark = ref('')
 const saving = ref(false)
 
@@ -138,6 +141,27 @@ const rowPhotos = (row) =>
   normalizeConditionImageUrls(row?.userConditionImages ?? row?.user_condition_images)
 
 const toMoney = (v) => (Number(v || 0)).toFixed(2)
+const toPercent = (v) => {
+  const n = Number(v ?? 0)
+  if (!Number.isFinite(n)) return '0.00%'
+  return `${n.toFixed(2)}%`
+}
+
+const loadGrades = async () => {
+  try {
+    const resp = await http('/admin/secondHand/config', { method: 'GET', json: false })
+    const list = (resp && Number(resp.code) === 1 && Array.isArray(resp.data?.grades)) ? resp.data.grades : []
+    gradeOptions.value = list.filter(g => Number(g?.enabled ?? 1) === 1)
+    if (!gradeId.value) gradeId.value = firstEnabledGradeId()
+  } catch (_) {
+    gradeOptions.value = []
+  }
+}
+
+const firstEnabledGradeId = () => {
+  const g = gradeOptions.value && gradeOptions.value.length ? gradeOptions.value[0] : null
+  return g?.id
+}
 
 const fetch = async () => {
   loading.value = true
@@ -172,7 +196,7 @@ const onSearch = () => {
 const openEvaluate = (row) => {
   current.value = row
   approve.value = true
-  conditionGrade.value = 2
+  gradeId.value = firstEnabledGradeId()
   staffRemark.value = ''
   dlg.value = true
 }
@@ -183,8 +207,8 @@ const resetDlg = () => {
 
 const doEvaluate = async () => {
   if (!current.value?.id) return
-  if (approve.value && (!conditionGrade.value || conditionGrade.value < 1)) {
-    ElMessage.warning('请选择成色')
+  if (approve.value && !gradeId.value) {
+    ElMessage.warning('请选择成色档位')
     return
   }
   saving.value = true
@@ -194,7 +218,7 @@ const doEvaluate = async () => {
       body: {
         id: current.value.id,
         approve: approve.value,
-        conditionGrade: approve.value ? conditionGrade.value : null,
+        gradeId: approve.value ? gradeId.value : null,
         staffRemark: staffRemark.value || null
       }
     })
@@ -214,6 +238,7 @@ const doEvaluate = async () => {
 }
 
 onMounted(fetch)
+onMounted(loadGrades)
 </script>
 
 <style scoped>

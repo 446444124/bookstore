@@ -9,6 +9,7 @@ import Employees from '../pages/Employees.vue'
 import Orders from '../pages/Orders.vue'
 import Profile from '../pages/Profile.vue'
 import SecondHand from '../pages/SecondHand.vue'
+import SecondHandConfig from '../pages/SecondHandConfig.vue'
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -32,6 +33,7 @@ const router = createRouter({
         { path: 'orders/return-review', component: Orders },
         { path: 'employees', component: Employees },
         { path: 'second-hand', component: SecondHand },
+        { path: 'second-hand-config', component: SecondHandConfig },
         { path: 'profile', component: Profile }
       ]
     }

@@ -12,6 +12,7 @@
         <el-menu-item index="/admin/second-hand">
           <span class="menu-with-dot">二手书回收<span v-if="secondHandPending > 0" class="menu-badge">{{ secondHandBadgeText }}</span></span>
         </el-menu-item>
+        <el-menu-item index="/admin/second-hand-config">二手书回收配置</el-menu-item>
         <el-menu-item index="/admin/orders">订单管理</el-menu-item>
         <el-menu-item index="/admin/orders/pending-confirm">
           <span class="menu-with-dot">待接单<span v-if="showDot(2)" class="menu-badge">{{ badgeText(2) }}</span></span>
