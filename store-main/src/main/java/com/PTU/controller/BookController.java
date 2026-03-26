@@ -2,6 +2,7 @@ package com.PTU.controller;
 
 import com.PTU.dto.BookPageQueryDTO;
 import com.PTU.entity.Book;
+import com.PTU.exception.BaseException;
 import com.PTU.result.PageResult;
 import com.PTU.result.Result;
 import com.PTU.service.BookService;
@@ -41,6 +42,9 @@ public class BookController {
     public Result<BookVO> getById(@PathVariable Long id) {
         log.info("根据id查询图书：{}", id);
         Book book = bookService.getById(id);
+        if (book == null) {
+            throw new BaseException("图书不存在或已下架");
+        }
         BookVO bookVO = new BookVO();
         BeanUtils.copyProperties(book, bookVO);
         return Result.success(bookVO);

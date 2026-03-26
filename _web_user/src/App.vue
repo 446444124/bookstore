@@ -160,22 +160,27 @@ onUnmounted(() => {
 
 <style>
 :root {
-  --bg: #f6f8fb;
+  --font-heading: "Rubik", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Nunito Sans", ui-sans-serif, system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+
+  --bg: #f8fafc;
   --surface: #ffffff;
-  --surface-soft: #fbfcfe;
-  --text-main: #111827;
-  --text-sub: #6b7280;
-  --border: #e8ecf3;
-  --primary: #5563f2;
-  --primary-weak: #eef0ff;
-  --success: #3f8f6b;
-  --warning: #b7823a;
-  --danger: #c85c5c;
-  --radius: 8px;
+  --surface-soft: #f1f5f9;
+  --text-main: #0f172a;
+  --text-sub: #475569;
+  --border: #e2e8f0;
+  --primary: #0369a1;
+  --primary-weak: #e0f2fe;
+  --success: #0d9488;
+  --warning: #b45309;
+  --danger: #b91c1c;
+  --radius: 10px;
   --space-1: 8px;
   --space-2: 16px;
   --space-3: 24px;
-  --shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+  --shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 12px 28px rgba(15, 23, 42, 0.08);
 
   --el-color-primary: var(--primary);
   --el-color-success: var(--success);
@@ -187,9 +192,15 @@ html {
   scroll-behavior: smooth;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
 body {
   margin: 0;
-  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  font-family: var(--font-body);
   background: var(--bg);
   color: var(--text-main);
 }
@@ -202,27 +213,32 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, #f8faff 0%, var(--bg) 100%);
+  background: linear-gradient(180deg, #f0f9ff 0%, var(--bg) 42%);
 }
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-1);
-  padding: var(--space-2);
+  padding: 14px clamp(16px, 3vw, 28px);
   border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  backdrop-filter: blur(8px);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  backdrop-filter: blur(10px);
   position: sticky;
-  top: 0;
+  top: 12px;
+  margin: 12px 12px 0;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
   z-index: 30;
 }
 .brand {
+  font-family: var(--font-heading);
   font-weight: 700;
-  font-size: 22px;
+  font-size: clamp(18px, 2.2vw, 22px);
   display: flex;
   align-items: center;
   gap: 10px;
+  cursor: default;
 }
 .brand .badge {
   width: 44px;
@@ -236,6 +252,9 @@ body {
   gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+.nav-actions :deep(.el-button) {
+  cursor: pointer;
 }
 .profile {
   display: flex;
@@ -258,7 +277,8 @@ body {
 .main {
   flex: 1;
   background: transparent;
-  padding: var(--space-2);
+  padding: var(--space-2) clamp(12px, 2.5vw, 24px) var(--space-3);
+  box-sizing: border-box;
 }
 .footer {
   border-top: 1px solid var(--border);
@@ -281,12 +301,18 @@ body {
   height: 36px;
   padding: 0 14px;
   font-weight: 600;
-  transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease, border-color .2s ease;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 :global(.el-button:hover) {
-  transform: translateY(-1px);
   box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(.el-button) {
+    transition: none;
+  }
 }
 
 :global(.el-input__wrapper),
@@ -343,6 +369,7 @@ body {
 :global(.title-bar .title),
 :global(.title-row .title),
 :global(.card-head) {
+  font-family: var(--font-heading);
   font-size: 22px;
   font-weight: 700;
   line-height: 1.3;
@@ -358,6 +385,8 @@ body {
 
 @media (max-width: 900px) {
   .header {
+    top: 8px;
+    margin: 8px 8px 0;
     padding: 12px 14px;
     align-items: flex-start;
     flex-direction: column;

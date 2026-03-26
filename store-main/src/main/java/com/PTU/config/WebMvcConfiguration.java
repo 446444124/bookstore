@@ -44,10 +44,13 @@ public class WebMvcConfiguration extends WebMvcConfigurationSupport {
                 .excludePathPatterns("/user/user/register")
                 .excludePathPatterns("/user/user/logout")
                 .excludePathPatterns("/user/shop/status")
-                .excludePathPatterns("/user/book/page")
+                // 单段通配 /user/book/* 在部分环境下对「详情 /user/book/123」排除不生效，导致未登录访问详情被 JWT 拦截为 401
+                .excludePathPatterns("/user/book/**")
                 .excludePathPatterns("/user/category/page")
                 .excludePathPatterns("/user/major/page")
-                .excludePathPatterns("/user/home/recommend");
+                .excludePathPatterns("/user/home/recommend")
+                .excludePathPatterns("/user/secondHand/onSale")
+                .excludePathPatterns("/user/secondHand/detail/**");
     }
 
 

@@ -229,7 +229,7 @@ const walletFlows = ref([])
 const walletFlowPage = ref(1)
 const walletFlowPageSize = ref(8)
 const walletFlowTotal = ref(0)
-const flowTypeText = (v) => ({ 1: '充值', 2: '消费', 3: '退款' }[Number(v)] || '未知')
+const flowTypeText = (v) => ({ 1: '充值', 2: '消费', 3: '退款', 4: '二手售出' }[Number(v)] || '未知')
 const formatTime = (s) => {
   if (!s) return '-'
   return String(s).replace('T', ' ').slice(0, 19)
@@ -448,7 +448,25 @@ const onAvatarChange = async (file) => {
       })()
       if (u && String(u).trim()) {
         form.value.avatar = u
-        ElMessage.success('头像上传成功')
+        // 上传成功后立即持久化到数据库，避免用户未点“保存”导致头像不入库
+        try {
+          const userId = form.value.userId || localStorage.getItem('userId') || ''
+          const payload = { userId, avatar: u }
+          const r = await fetch('/user/user', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', ...(token ? { authentication: token } : {}) },
+            body: JSON.stringify(payload)
+          })
+          if (r.ok) {
+            if (u) localStorage.setItem('userAvatar', u)
+            window.dispatchEvent(new CustomEvent('user-logged-in'))
+            ElMessage.success('头像上传成功')
+          } else {
+            ElMessage.warning('头像已上传，但保存失败，请点击“保存”重试')
+          }
+        } catch (_) {
+          ElMessage.warning('头像已上传，但保存失败，请点击“保存”重试')
+        }
         return
       }
     }
@@ -477,22 +495,17 @@ const onSave = async () => {
       majorId: form.value.majorId,
       avatar: form.value.avatar
     }
-    const tryUpdate = async (url) => {
-      const resp = await fetch(url, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...(token ? { authentication: token } : {}) },
-        body: JSON.stringify(payload)
-      })
-      const ct = resp.headers.get('content-type') || ''
-      let data = {}
-      if (ct.includes('application/json')) {
-        try { data = await resp.json() } catch (_) {}
-      }
-      return { ok: resp.ok, data }
+    const resp = await fetch('/user/user', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...(token ? { authentication: token } : {}) },
+      body: JSON.stringify(payload)
+    })
+    const ct = resp.headers.get('content-type') || ''
+    let data = {}
+    if (ct.includes('application/json')) {
+      try { data = await resp.json() } catch (_) {}
     }
-    let r = await tryUpdate('/user/user/update')
-    if (!r.ok) r = await tryUpdate('/user/user')
-    if (r.ok) {
+    if (resp.ok) {
       ElMessage.success('保存成功')
       if (form.value.realName) localStorage.setItem('userRealName', form.value.realName)
       if (form.value.username) localStorage.setItem('userUsername', form.value.username)
@@ -501,7 +514,7 @@ const onSave = async () => {
       originalForm.value = JSON.parse(JSON.stringify(form.value))
       isEditing.value = false
     } else {
-      ElMessage.error(r.data?.msg || '保存失败')
+      ElMessage.error(data?.msg || '保存失败')
     }
   } catch (_) {
     ElMessage.error('网络错误')

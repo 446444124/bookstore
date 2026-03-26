@@ -1,3 +1,9 @@
+# 开发环境：错误 JSON 中带 message，便于排查（表结构已正确却仍 500 时请看控制台与下方 message）
+server:
+  error:
+    include-message: always
+    include-binding-errors: always
+
 store:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver

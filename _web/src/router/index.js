@@ -8,6 +8,7 @@ import Categories from '../pages/Categories.vue'
 import Employees from '../pages/Employees.vue'
 import Orders from '../pages/Orders.vue'
 import Profile from '../pages/Profile.vue'
+import SecondHand from '../pages/SecondHand.vue'
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -30,6 +31,7 @@ const router = createRouter({
         { path: 'orders/pending-complete', component: Orders },
         { path: 'orders/return-review', component: Orders },
         { path: 'employees', component: Employees },
+        { path: 'second-hand', component: SecondHand },
         { path: 'profile', component: Profile }
       ]
     }

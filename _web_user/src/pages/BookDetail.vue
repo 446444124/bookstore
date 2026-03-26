@@ -36,6 +36,7 @@ const router = useRouter()
 const defaultCover = '/default-book-cover.svg'
 const book = ref({})
 const loaded = ref(false)
+const isBizOk = (payload) => payload && typeof payload === 'object' && Number(payload.code) === 1
 const loadDetail = async () => {
   try {
     const id = route.params.id
@@ -47,16 +48,25 @@ const loadDetail = async () => {
     const ct = resp.headers.get('content-type') || ''
     let data = {}
     if (ct.includes('application/json')) {
-      try { data = await resp.json() } catch (_) {}
+      try {
+        data = await resp.json()
+      } catch (_) {}
     }
-    if (resp.ok) {
+    if (resp.status === 401) {
+      loaded.value = true
+      book.value = {}
+      ElMessage.warning('登录已过期，请重新登录')
+      router.push({ path: '/login', query: { redirect: route.fullPath, msg: '请先登录' } })
+      return
+    }
+    if (resp.ok && isBizOk(data)) {
       const d = data?.data ?? data
       book.value = d || {}
       loaded.value = true
     } else {
       loaded.value = true
       book.value = {}
-      ElMessage.error('加载图书详情失败')
+      ElMessage.error(data?.msg || '加载图书详情失败')
     }
   } catch (_) {
     loaded.value = true
@@ -83,12 +93,23 @@ const addToCart = () => {
       const tk = localStorage.getItem('token') || ''
       return tk ? { authentication: tk } : {}
     })()
-  }).then(resp => {
-    if (resp.ok) {
+  }).then(async (resp) => {
+    let data = {}
+    if (resp.headers.get('content-type')?.includes('application/json')) {
+      try {
+        data = await resp.json()
+      } catch (_) {}
+    }
+    if (resp.status === 401) {
+      ElMessage.warning('登录已过期，请重新登录')
+      router.push({ path: '/login', query: { redirect: route.fullPath, msg: '请先登录' } })
+      return
+    }
+    if (resp.ok && Number(data.code) === 1) {
       ElMessage.success('已加入购物车')
       refreshCartCount()
     } else {
-      ElMessage.error('加入购物车失败')
+      ElMessage.error(data?.msg || '加入购物车失败')
     }
   }).catch(() => ElMessage.error('加入购物车失败'))
 }

@@ -42,6 +42,13 @@ public class Orders implements Serializable {
     public static final Integer PAID = 1;
     public static final Integer REFUND = 2;
 
+    /**
+     * 是否已支付（用数值比较，避免 JDBC 映射为 Long/Byte 时 Integer.equals 不相等导致误判为未支付）
+     */
+    public static boolean isPaid(Number payStatus) {
+        return payStatus != null && payStatus.intValue() == PAID.intValue();
+    }
+
     private static final long serialVersionUID = 1L;
     /**
      * 订单号，使用UUID生成
@@ -180,4 +187,10 @@ public class Orders implements Serializable {
      */
     @TableField("delivery_way")
     private Integer deliveryWay;
+
+    /**
+     * 关联二手书条目（购买二手时写入）
+     */
+    @TableField("second_hand_listing_id")
+    private Long secondHandListingId;
 }

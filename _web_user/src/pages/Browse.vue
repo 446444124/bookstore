@@ -193,12 +193,23 @@ const onAddToCart = (b) => {
       const tk = localStorage.getItem('token') || ''
       return tk ? { authentication: tk } : {}
     })()
-  }).then(resp => {
-    if (resp.ok) {
+  }).then(async (resp) => {
+    let data = {}
+    if (resp.headers.get('content-type')?.includes('application/json')) {
+      try {
+        data = await resp.json()
+      } catch (_) {}
+    }
+    if (resp.status === 401) {
+      ElMessage.warning('登录已过期，请重新登录')
+      router.push({ path: '/login', query: { redirect: '/browse', msg: '请先登录' } })
+      return
+    }
+    if (resp.ok && Number(data.code) === 1) {
       ElMessage.success('已加入购物车')
       refreshCartCount()
     } else {
-      ElMessage.error('加入购物车失败')
+      ElMessage.error(data?.msg || '加入购物车失败')
     }
   }).catch(() => ElMessage.error('加入购物车失败'))
 }

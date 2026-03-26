@@ -21,6 +21,8 @@ public class WalletFlow {
     public static final Integer TYPE_RECHARGE = 1;
     public static final Integer TYPE_CONSUME = 2;
     public static final Integer TYPE_REFUND = 3;
+    /** 二手书成交：买家已付款后结算给卖家 */
+    public static final Integer TYPE_SELLER_INCOME = 4;
 
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;

@@ -62,6 +62,9 @@ public class BookController {
     public Result<BookVO> getById(@PathVariable Long id) {
         log.info("根据id查询图书：{}", id);
         Book book = bookService.getById(id);
+        if (book == null) {
+            throw new BaseException("图书不存在或已下架");
+        }
         BookVO bookVO = new BookVO();
         BeanUtils.copyProperties(book, bookVO);
         return Result.success(bookVO);

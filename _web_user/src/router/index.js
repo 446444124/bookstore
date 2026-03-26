@@ -6,7 +6,11 @@ import BookDetail from '../pages/BookDetail.vue'
 import Cart from '../pages/Cart.vue'
 import Profile from '../pages/Profile.vue'
 import PaySuccess from '../pages/PaySuccess.vue'
+import WalletRechargeSuccess from '../pages/WalletRechargeSuccess.vue'
 import Orders from '../pages/Orders.vue'
+import SecondHandBrowse from '../pages/SecondHandBrowse.vue'
+import SecondHandDetail from '../pages/SecondHandDetail.vue'
+import SecondHandSell from '../pages/SecondHandSell.vue'
 
 const routes = [
   { path: '/', component: Home },
@@ -14,9 +18,13 @@ const routes = [
   { path: '/browse', component: Browse },
   { path: '/book/:id', component: BookDetail },
   { path: '/paysuccess', component: PaySuccess },
+  { path: '/wallet-rechargesuccess', component: WalletRechargeSuccess },
   { path: '/profile', component: Profile },
   { path: '/cart', component: Cart },
-  { path: '/orders', component: Orders }
+  { path: '/orders', component: Orders },
+  { path: '/second-hand', component: SecondHandBrowse },
+  { path: '/second-hand/sell', component: SecondHandSell },
+  { path: '/second-hand/:id', component: SecondHandDetail }
 ]
 
 const router = createRouter({
@@ -29,8 +37,15 @@ router.beforeEach(async (to, from, next) => {
   const userId = localStorage.getItem('userId') || ''
   const isLogin = to.path === '/login'
   const isHome = to.path === '/'
+  const isSecondHandPublic =
+    to.path === '/second-hand' ||
+    (to.path.startsWith('/second-hand/') && to.path !== '/second-hand/sell' && !to.path.endsWith('/sell'))
+  // 图书详情可匿名浏览（加入购物车仍须登录）
+  const isBookDetail = /^\/book\/[^/]+$/.test(to.path)
   if (!token || !userId) {
-    if (!isLogin && !isHome) return next({ path: '/login', query: { redirect: to.fullPath, msg: '请先登录' } })
+    if (!isLogin && !isHome && !isSecondHandPublic && !isBookDetail) {
+      return next({ path: '/login', query: { redirect: to.fullPath, msg: '请先登录' } })
+    }
     return next()
   }
   try {

@@ -23,7 +23,8 @@ public class CartController {
 
     @PostMapping("/add/{id}")
     @ApiOperation("添加购物车")
-    public Result add(@PathVariable Long id, Integer num) {
+    public Result add(@PathVariable Long id,
+                      @RequestParam(defaultValue = "1") Integer num) {
         log.info("添加购物车：{}", id);
         cartService.add(id, num);
         return Result.success();

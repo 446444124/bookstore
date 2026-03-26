@@ -6,6 +6,12 @@
         <el-button @click="goHome">返回首页</el-button>
       </div>
     </div>
+    <div class="order-scope">
+      <el-radio-group v-model="orderScope">
+        <el-radio-button label="book">普通图书订单</el-radio-button>
+        <el-radio-button label="secondHand">二手书订单</el-radio-button>
+      </el-radio-group>
+    </div>
     <div class="filters">
       <el-radio-group v-model="status" @change="onStatusChange">
         <el-radio-button :label="''">全部</el-radio-button>
@@ -34,7 +40,7 @@
         <el-radio-button :label="1">配送</el-radio-button>
       </el-radio-group>
     </div>
-    <el-table :data="items" border v-loading="loading" class="table" empty-text="暂无订单">
+    <el-table :data="items" :row-key="orderRowKey" border v-loading="loading" class="table" empty-text="暂无订单">
       <el-table-column prop="id" label="订单号" min-width="180" />
       <el-table-column prop="orderTime" label="下单时间" min-width="180">
         <template #default="{ row }">{{ formatTime(row.orderTime) }}</template>
@@ -63,7 +69,11 @@
           <el-button size="small" type="primary" v-if="row.status === 1 && row.payStatus === 0" @click="goPay(row)">去支付</el-button>
           <el-button size="small" type="danger" v-if="row.status === 1 && row.payStatus === 0" @click="onCancel(row)">取消</el-button>
           <el-button size="small" type="warning" v-if="row.status === 5 && row.payStatus === 1" @click="onReturn(row)">申请退货</el-button>
-          <el-button size="small" v-if="row.status !== 1 || row.payStatus !== 0" @click="onRebuy(row)">再来一单</el-button>
+          <el-button
+            size="small"
+            v-if="orderScope !== 'secondHand' && (row.status !== 1 || row.payStatus !== 0)"
+            @click="onRebuy(row)"
+          >再来一单</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -83,7 +93,7 @@
     <el-dialog v-model="detailVisible" title="订单详情" width="680px">
       <div v-if="detail">
         <div class="detail-head">
-          <div>订单号：{{ detail.orderNumber }}</div>
+          <div>订单号：{{ detail.orderNumber || detail.id }}</div>
           <div>下单时间：{{ formatTime(detail.orderTime) }}</div>
           <div>订单金额：¥ {{ toMoney(detail.totalAmount) }}</div>
           <div class="status-line">
@@ -134,12 +144,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const router = useRouter()
 const defaultCover = '/default-book-cover.svg'
+const orderScope = ref('book')
 const items = ref([])
 const loading = ref(false)
 const page = ref(1)
@@ -200,15 +211,28 @@ const deliveryStatusTagType = (v) => {
   const map = { 0: 'info', 1: 'warning' }
   return map[v] ?? 'info'
 }
+/** 后端 Result：code===1 成功；HTTP 200 时仍可能 code=0（业务失败） */
+const isBizOk = (payload) => {
+  if (!payload || typeof payload !== 'object') return false
+  return Number(payload.code) === 1
+}
+
+const orderRowKey = (row) => row?.id ?? row?.orderNumber ?? '-'
+
 const showDot = (s) => {
   if (s === 5 || s === 6 || s === 8) return false
-  return Number(statusCount.value?.[s] || 0) > 0
+  const key = s
+  const m = statusCount.value || {}
+  const n = m[key] ?? m[String(key)] ?? 0
+  return Number(n) > 0
 }
 const loadStatusCount = async () => {
   try {
     const token = localStorage.getItem('token') || ''
     if (!token) return
-    const resp = await fetch('/user/order/statusCount', {
+    const countUrl =
+      orderScope.value === 'secondHand' ? '/user/secondHandOrder/statusCount' : '/user/order/statusCount'
+    const resp = await fetch(countUrl, {
       method: 'GET',
       headers: { authentication: token }
     })
@@ -217,9 +241,9 @@ const loadStatusCount = async () => {
     if (ct.includes('application/json')) {
       try { data = await resp.json() } catch (_) {}
     }
-    if (resp.ok) {
+    if (resp.ok && isBizOk(data)) {
       const d = data?.data ?? {}
-      statusCount.value = d || {}
+      statusCount.value = d && typeof d === 'object' ? d : {}
     }
   } catch (_) {}
 }
@@ -241,7 +265,9 @@ const loadOrders = async () => {
     if (deliveryWay.value !== '' && deliveryWay.value !== null && deliveryWay.value !== undefined) {
       qs.append('deliveryWay', String(deliveryWay.value))
     }
-    const resp = await fetch(`/user/order/page?${qs.toString()}`, {
+    const pageUrl =
+      orderScope.value === 'secondHand' ? '/user/secondHandOrder/page' : '/user/order/page'
+    const resp = await fetch(`${pageUrl}?${qs.toString()}`, {
       method: 'GET',
       headers: { authentication: token }
     })
@@ -250,7 +276,7 @@ const loadOrders = async () => {
     if (ct.includes('application/json')) {
       try { data = await resp.json() } catch (_) {}
     }
-    if (resp.ok) {
+    if (resp.ok && isBizOk(data)) {
       if (currentSeq !== latestLoadSeq) return
       const d = data?.data ?? data
       total.value = Number(d?.total ?? 0) || 0
@@ -259,6 +285,8 @@ const loadOrders = async () => {
       loadStatusCount()
     } else {
       if (currentSeq !== latestLoadSeq) return
+      items.value = []
+      total.value = 0
       ElMessage.error(data?.msg || '加载失败')
     }
   } catch (_) {
@@ -283,11 +311,20 @@ const onDeliveryWayChange = () => {
   page.value = 1
   loadOrders()
 }
+watch(orderScope, () => {
+  page.value = 1
+  loadOrders()
+})
+
 const viewDetail = async (row) => {
-  if (!row || !row.id) return
+  const oid = row?.id ?? row?.orderNumber
+  if (!row || !oid) {
+    ElMessage.warning('订单号缺失')
+    return
+  }
   try {
     const token = localStorage.getItem('token') || ''
-    const resp = await fetch(`/user/order/orderDetail/${encodeURIComponent(row.id)}`, {
+    const resp = await fetch(`/user/order/orderDetail/${encodeURIComponent(String(oid))}`, {
       method: 'GET',
       headers: { authentication: token }
     })
@@ -296,7 +333,7 @@ const viewDetail = async (row) => {
     if (ct.includes('application/json')) {
       try { data = await resp.json() } catch (_) {}
     }
-    if (resp.ok) {
+    if (resp.ok && isBizOk(data)) {
       const d = data?.data ?? data
       detail.value = d
       detailVisible.value = true
@@ -308,26 +345,26 @@ const viewDetail = async (row) => {
   }
 }
 const onCancel = async (row) => {
-  if (!row || !row.id) return
+  const oid = row?.id ?? row?.orderNumber
+  if (!row || !oid) return
   try {
-    await ElMessageBox.confirm(`确认取消订单 ${row.id} 吗？`, '提示', { type: 'warning' })
+    await ElMessageBox.confirm(`确认取消订单 ${oid} 吗？`, '提示', { type: 'warning' })
   } catch (_) { return }
   try {
     const token = localStorage.getItem('token') || ''
-    const resp = await fetch(`/user/order/cancel/${encodeURIComponent(row.id)}`, {
+    const resp = await fetch(`/user/order/cancel/${encodeURIComponent(String(oid))}`, {
       method: 'PUT',
       headers: { authentication: token }
     })
-    if (resp.ok) {
+    let data = {}
+    if (resp.headers.get('content-type')?.includes('application/json')) {
+      try { data = await resp.json() } catch (_) {}
+    }
+    if (resp.ok && isBizOk(data)) {
       ElMessage.success('已取消订单')
       loadOrders()
       loadStatusCount()
     } else {
-      const ct = resp.headers.get('content-type') || ''
-      let data = {}
-      if (ct.includes('application/json')) {
-        try { data = await resp.json() } catch (_) {}
-      }
       ElMessage.error(data?.msg || '取消失败')
     }
   } catch (_) {
@@ -335,22 +372,22 @@ const onCancel = async (row) => {
   }
 }
 const onRebuy = async (row) => {
-  if (!row || !row.id) return
+  const oid = row?.id ?? row?.orderNumber
+  if (!row || !oid) return
   try {
     const token = localStorage.getItem('token') || ''
-    const resp = await fetch(`/user/order/repetition/${encodeURIComponent(row.id)}`, {
+    const resp = await fetch(`/user/order/repetition/${encodeURIComponent(String(oid))}`, {
       method: 'POST',
       headers: { authentication: token }
     })
-    if (resp.ok) {
+    let data = {}
+    if (resp.headers.get('content-type')?.includes('application/json')) {
+      try { data = await resp.json() } catch (_) {}
+    }
+    if (resp.ok && isBizOk(data)) {
       ElMessage.success('商品已加入购物车')
       router.push('/cart')
     } else {
-      const ct = resp.headers.get('content-type') || ''
-      let data = {}
-      if (ct.includes('application/json')) {
-        try { data = await resp.json() } catch (_) {}
-      }
       ElMessage.error(data?.msg || '操作失败')
     }
   } catch (_) {
@@ -358,7 +395,8 @@ const onRebuy = async (row) => {
   }
 }
 const onReturn = async (row) => {
-  if (!row || !row.id) return
+  const oid = row?.id ?? row?.orderNumber
+  if (!row || !oid) return
   let reason = ''
   try {
     const res = await ElMessageBox.prompt('请填写退货原因（选填）', '申请退货', {
@@ -373,7 +411,7 @@ const onReturn = async (row) => {
   try {
     const token = localStorage.getItem('token') || ''
     const qs = reason ? `?reason=${encodeURIComponent(reason)}` : ''
-    const resp = await fetch(`/user/order/return/${encodeURIComponent(row.id)}${qs}`, {
+    const resp = await fetch(`/user/order/return/${encodeURIComponent(String(oid))}${qs}`, {
       method: 'POST',
       headers: { authentication: token }
     })
@@ -382,7 +420,7 @@ const onReturn = async (row) => {
     if (ct.includes('application/json')) {
       try { data = await resp.json() } catch (_) {}
     }
-    if (resp.ok) {
+    if (resp.ok && isBizOk(data)) {
       ElMessage.success('已提交退货申请，等待商家审批')
       loadOrders()
       loadStatusCount()
@@ -394,14 +432,15 @@ const onReturn = async (row) => {
   }
 }
 const goPay = async (row) => {
-  if (!row || !row.id) {
+  const oid = row?.id ?? row?.orderNumber
+  if (!row || !oid) {
     ElMessage.error('缺少订单号，无法支付')
     return
   }
   const payWin = window.open('', '_blank')
   try {
     const token2 = localStorage.getItem('token') || ''
-    const payResp = await fetch(`/api/alipay/pay?id=${encodeURIComponent(row.id)}`, {
+    const payResp = await fetch(`/api/alipay/pay?id=${encodeURIComponent(String(oid))}`, {
       method: 'GET',
       headers: token2 ? { authentication: token2 } : {}
     })
@@ -425,13 +464,13 @@ const goPay = async (row) => {
         } catch (_) {
           url = ''
         }
-        if (!url) url = `/api/alipay/pay?id=${encodeURIComponent(row.id)}`
+        if (!url) url = `/api/alipay/pay?id=${encodeURIComponent(String(oid))}`
         if (payWin) payWin.location.href = url
       }
     }
     ElMessage.success('前往支付')
   } catch (_) {
-    if (payWin) payWin.location.href = `/api/alipay/pay?id=${encodeURIComponent(row.id)}`
+    if (payWin) payWin.location.href = `/api/alipay/pay?id=${encodeURIComponent(String(oid))}`
   }
 }
 const goHome = () => router.push('/')
@@ -446,6 +485,9 @@ onMounted(() => {
   max-width: 1100px;
   margin: 0 auto;
   padding: 12px;
+}
+.order-scope {
+  margin-bottom: 10px;
 }
 .title-bar {
   display: flex;

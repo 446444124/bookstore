@@ -84,10 +84,25 @@ html, body, #app {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-image: linear-gradient(rgba(15, 23, 42, 0.52), rgba(15, 23, 42, 0.42)), url('https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?q=80&w=1920&auto=format&fit=crop');
-  background-size: cover;
+  position: relative;
+  overflow: hidden;
+  background-color: #0369a1;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    radial-gradient(ellipse 100% 70% at 50% -25%, rgba(255, 255, 255, 0.22) 0%, transparent 52%),
+    radial-gradient(ellipse 55% 45% at 100% 85%, rgba(14, 165, 233, 0.45) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 42% at 0% 75%, rgba(2, 132, 199, 0.38) 0%, transparent 52%),
+    linear-gradient(165deg, #0c4a6e 0%, #0369a1 40%, #0284c7 100%);
+  background-size:
+    40px 40px,
+    40px 40px,
+    100% 100%,
+    100% 100%,
+    100% 100%,
+    100% 100%;
   background-position: center;
-  background-repeat: no-repeat;
+  background-repeat: repeat, repeat, no-repeat, no-repeat, no-repeat, no-repeat;
   background-attachment: fixed;
 }
 .logo-title {
@@ -104,24 +119,27 @@ html, body, #app {
 .badge {
   width: clamp(72px, 12vw, 120px);
   height: auto;
-  filter: drop-shadow(0 4px 10px rgba(0,0,0,0.25));
+  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.2));
 }
 .system-title {
-  color: #ffffff;
-  text-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  font-family: var(--font-heading);
+  color: #f8fafc;
+  text-shadow: 0 2px 12px rgba(12, 74, 110, 0.45);
   font-size: clamp(20px, 3vw, 34px);
   font-weight: 700;
-  letter-spacing: 2px;
+  letter-spacing: 0.06em;
 }
 .login-card {
   width: min(540px, calc(100vw - 28px));
   padding: 14px;
   min-height: auto;
   border-radius: var(--admin-radius);
-  border: 1px solid rgba(255, 255, 255, 0.48);
-  background-color: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.22);
-  backdrop-filter: blur(8px);
+  border: 1px solid color-mix(in srgb, #ffffff 55%, #bae6fd);
+  background-color: rgba(255, 255, 255, 0.94);
+  box-shadow:
+    0 4px 6px rgba(12, 74, 110, 0.08),
+    0 22px 48px rgba(3, 105, 161, 0.22);
+  backdrop-filter: blur(10px);
 }
 .login-card .el-card__body {
   display: flex;
@@ -136,6 +154,7 @@ html, body, #app {
   margin: 0 auto;
 }
 .title {
+  font-family: var(--font-heading);
   font-size: clamp(24px, 2.6vw, 32px);
   font-weight: 700;
   margin-bottom: 16px;
@@ -161,6 +180,11 @@ html, body, #app {
   .system-title {
     font-size: 20px;
     letter-spacing: 1px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .login-container {
+    background-attachment: scroll;
   }
 }
 </style>

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.PTU.mapper.AdminOrderUnionMapper">
+
+    <select id="countUnion" resultType="long">
+        SELECT COUNT(*) FROM (
+            SELECT o.id FROM orders o
+            <where>
+                <if test="status != null">AND o.status = #{status}</if>
+                <if test="deliveryWay != null">AND o.delivery_way = #{deliveryWay}</if>
+                <if test="orderNumber != null and orderNumber != ''">AND o.id LIKE CONCAT('%', #{orderNumber}, '%')</if>
+                <if test="phone != null and phone != ''">AND o.phone LIKE CONCAT('%', #{phone}, '%')</if>
+            </where>
+            UNION ALL
+            SELECT s.id FROM second_hand_order s
+            <where>
+                1 = 1
+                <if test="status != null">AND s.status = #{status}</if>
+                <if test="deliveryWay != null">AND s.delivery_way = #{deliveryWay}</if>
+                <if test="orderNumber != null and orderNumber != ''">AND s.id LIKE CONCAT('%', #{orderNumber}, '%')</if>
+                <if test="phone != null and phone != ''">AND s.phone LIKE CONCAT('%', #{phone}, '%')</if>
+            </where>
+        ) c
+    </select>
+
+    <select id="selectUnionPage" resultType="com.PTU.vo.AdminOrderUnionRow">
+        SELECT * FROM (
+            SELECT o.id, o.user_id AS userId, o.total_amount AS totalAmount, o.status, o.pay_status AS payStatus,
+                   o.phone, o.consignee, o.delivery_way AS deliveryWay, o.order_time AS orderTime
+            FROM orders o
+            <where>
+                <if test="status != null">AND o.status = #{status}</if>
+                <if test="deliveryWay != null">AND o.delivery_way = #{deliveryWay}</if>
+                <if test="orderNumber != null and orderNumber != ''">AND o.id LIKE CONCAT('%', #{orderNumber}, '%')</if>
+                <if test="phone != null and phone != ''">AND o.phone LIKE CONCAT('%', #{phone}, '%')</if>
+            </where>
+            UNION ALL
+            SELECT s.id, s.user_id AS userId, s.total_amount AS totalAmount, s.status, s.pay_status AS payStatus,
+                   s.phone, s.consignee, s.delivery_way AS deliveryWay, s.order_time AS orderTime
+            FROM second_hand_order s
+            <where>
+                1 = 1
+                <if test="status != null">AND s.status = #{status}</if>
+                <if test="deliveryWay != null">AND s.delivery_way = #{deliveryWay}</if>
+                <if test="orderNumber != null and orderNumber != ''">AND s.id LIKE CONCAT('%', #{orderNumber}, '%')</if>
+                <if test="phone != null and phone != ''">AND s.phone LIKE CONCAT('%', #{phone}, '%')</if>
+            </where>
+        ) t
+        ORDER BY t.orderTime DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+</mapper>

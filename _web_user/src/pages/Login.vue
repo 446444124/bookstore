@@ -286,7 +286,25 @@ const onRegister = async () => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(1200px 600px at 70% -20%, #e7ebff 0%, transparent 55%), var(--bg);
+  position: relative;
+  overflow: hidden;
+  background-color: #f0f9ff;
+  background-image:
+    linear-gradient(rgba(3, 105, 161, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(3, 105, 161, 0.06) 1px, transparent 1px),
+    radial-gradient(ellipse 900px 520px at 50% -15%, rgba(14, 165, 233, 0.2) 0%, transparent 55%),
+    radial-gradient(ellipse 700px 400px at 100% 60%, rgba(56, 189, 248, 0.18) 0%, transparent 50%),
+    radial-gradient(ellipse 600px 380px at 0% 70%, rgba(3, 105, 161, 0.12) 0%, transparent 48%),
+    linear-gradient(175deg, #f8fafc 0%, #f0f9ff 28%, #e0f2fe 68%, #bae6fd 100%);
+  background-size:
+    36px 36px,
+    36px 36px,
+    100% 100%,
+    100% 100%,
+    100% 100%,
+    100% 100%;
+  background-position: center;
+  background-repeat: repeat, repeat, no-repeat, no-repeat, no-repeat, no-repeat;
   padding: 24px 14px;
 }
 .brand {
@@ -298,17 +316,24 @@ const onRegister = async () => {
 .brand .badge {
   width: 44px;
   height: 44px;
+  filter: drop-shadow(0 2px 8px rgba(3, 105, 161, 0.2));
 }
 .brand .title {
+  font-family: var(--font-heading);
   font-weight: 700;
   font-size: 24px;
-  letter-spacing: .2px;
+  letter-spacing: 0.02em;
+  color: var(--text-main);
 }
 .card {
   width: min(420px, 100%);
   border-radius: var(--radius);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-md);
+  border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border));
+  box-shadow:
+    0 4px 6px rgba(3, 105, 161, 0.06),
+    var(--shadow-md);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
 }
 .card .el-card__body {
   padding: 22px 22px 20px;
@@ -319,10 +344,12 @@ const onRegister = async () => {
   gap: 12px;
 }
 .card-title {
+  font-family: var(--font-heading);
   font-size: 20px;
   font-weight: 700;
   margin-bottom: 14px;
   text-align: center;
+  color: var(--text-main);
 }
 .ops {
   display: flex;

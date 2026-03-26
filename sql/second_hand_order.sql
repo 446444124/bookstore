@@ -1,0 +1,37 @@
+-- 二手书购买订单（独立于 orders / order_detail）
+-- 执行前请备份数据库
+
+CREATE TABLE IF NOT EXISTS second_hand_order (
+  id VARCHAR(64) PRIMARY KEY COMMENT '订单号',
+  user_id BIGINT NOT NULL COMMENT '买家',
+  listing_id BIGINT NOT NULL COMMENT '二手条目ID',
+  seller_user_id BIGINT NOT NULL COMMENT '卖家（冗余）',
+  total_amount DECIMAL(10,2) NOT NULL,
+  status INT NOT NULL COMMENT '1待付款 2待接单 3已接单 4派送中 5已完成 6已取消 7退货审核中 8已退款',
+  pay_status INT NOT NULL COMMENT '0未支付 1已支付 2退款',
+  pay_way INT DEFAULT NULL,
+  remark VARCHAR(500) DEFAULT NULL,
+  phone VARCHAR(32) DEFAULT NULL,
+  consignee VARCHAR(64) DEFAULT NULL,
+  address VARCHAR(500) DEFAULT NULL,
+  address_book_id BIGINT DEFAULT NULL,
+  order_time DATETIME DEFAULT NULL,
+  pay_time DATETIME DEFAULT NULL,
+  create_time DATETIME DEFAULT NULL,
+  update_time DATETIME DEFAULT NULL,
+  cancel_reason VARCHAR(500) DEFAULT NULL,
+  cancel_time VARCHAR(64) DEFAULT NULL,
+  rejection_reason VARCHAR(500) DEFAULT NULL,
+  estimated_delivery_time DATETIME DEFAULT NULL,
+  delivery_time DATETIME DEFAULT NULL,
+  delivery_status INT DEFAULT NULL,
+  delivery_way INT DEFAULT NULL,
+  username VARCHAR(64) DEFAULT NULL,
+  book_id BIGINT DEFAULT NULL COMMENT '图书快照',
+  book_title VARCHAR(255) DEFAULT NULL,
+  cover_image VARCHAR(512) DEFAULT NULL,
+  INDEX idx_user_id (user_id),
+  INDEX idx_listing_id (listing_id),
+  INDEX idx_status (status),
+  INDEX idx_order_time (order_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='二手书订单';

@@ -3,6 +3,7 @@ package com.PTU.service.impl;
 import com.PTU.constant.MessageConstant;
 import com.PTU.context.BaseContext;
 import com.PTU.dto.OrdersSubmitDTO;
+import com.PTU.dto.SecondHandOrderSubmitDTO;
 import com.PTU.entity.*;
 import com.PTU.exception.AddressBookBusinessException;
 import com.PTU.exception.BaseException;
@@ -12,6 +13,7 @@ import com.PTU.mapper.*;
 import com.PTU.result.PageResult;
 import com.PTU.service.CartService;
 import com.PTU.service.OrderService;
+import com.PTU.service.SecondHandListingService;
 import com.PTU.vo.OrderItemVO;
 import com.PTU.vo.OrderSubmitVO;
 import com.PTU.vo.OrderVO;
@@ -27,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +56,15 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
     private CartService cartService;
     @Autowired
     private WalletFlowMapper walletFlowMapper;
+    @Autowired
+    private SecondHandListingService secondHandListingService;
+    @Autowired
+    private SecondHandListingMapper secondHandListingMapper;
+    @Autowired
+    private SecondHandOrderMapper secondHandOrderMapper;
+
+    private static final int SECOND_HAND_MERGE_CAP = 5000;
+
     //TODO
     private Orders orders;
 
@@ -157,6 +169,87 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
         return orderSubmitVO;
     }
 
+    @Override
+    @Transactional
+    public OrderSubmitVO submitSecondHandOrder(SecondHandOrderSubmitDTO dto) {
+        Long userId = BaseContext.getCurrentId();
+        if (userId == null) {
+            throw new BaseException(MessageConstant.LOGIN_FAILED);
+        }
+        if (dto.getListingId() == null) {
+            throw new BaseException("缺少二手书条目");
+        }
+        if (dto.getPayWay() != 1 && dto.getPayWay() != 2) {
+            throw new BaseException("不支持的支付方式");
+        }
+        SecondHandOrder sh = new SecondHandOrder();
+        boolean isDelivery = dto.getDeliveryWay() != null && dto.getDeliveryWay() == 1;
+        if (isDelivery) {
+            AddressBook addressBook = addressBookmapper.selectById(dto.getAddressBookId());
+            if (addressBook == null) {
+                throw new AddressBookBusinessException(MessageConstant.ADDRESS_BOOK_IS_NULL);
+            }
+            sh.setPhone(addressBook.getPhone());
+            sh.setConsignee(addressBook.getConsignee());
+            sh.setAddress(buildAddress(addressBook));
+        }
+        String orderId = generateOrderNo(userId);
+        secondHandListingService.lockForOrder(dto.getListingId(), orderId, userId);
+        SecondHandListing listing = secondHandListingMapper.selectById(dto.getListingId());
+        if (listing == null || listing.getSalePrice() == null) {
+            throw new BaseException("二手书价格信息异常，请重试");
+        }
+        Book book = bookMapper.selectById(listing.getBookId());
+        if (book == null) {
+            throw new BaseException(MessageConstant.BOOK_OFF_SALE_OR_DELETED);
+        }
+        BigDecimal totalAmount = listing.getSalePrice();
+        BeanUtils.copyProperties(dto, sh);
+        LocalDateTime now = LocalDateTime.now();
+        sh.setOrderTime(now);
+        sh.setCreateTime(now);
+        sh.setUpdateTime(now);
+        sh.setId(orderId);
+        sh.setUserId(userId);
+        sh.setListingId(dto.getListingId());
+        sh.setSellerUserId(listing.getSellerUserId());
+        sh.setTotalAmount(totalAmount);
+        sh.setBookId(book.getId());
+        sh.setBookTitle("[二手] " + book.getTitle());
+        sh.setCoverImage(book.getCoverImage());
+        boolean walletPay = dto.getPayWay() == 2;
+        if (walletPay) {
+            int deducted = userMapper.deductWalletBalance(userId, totalAmount);
+            if (deducted == 0) {
+                throw new BaseException(MessageConstant.WALLET_BALANCE_NOT_ENOUGH);
+            }
+            sh.setPayStatus(Orders.PAID);
+            sh.setStatus(Orders.TO_BE_CONFIRMED);
+            sh.setPayTime(now);
+        } else {
+            sh.setPayStatus(Orders.UN_PAID);
+            sh.setStatus(Orders.PENDING_PAYMENT);
+        }
+        secondHandOrderMapper.insert(sh);
+        if (walletPay) {
+            walletFlowMapper.insert(WalletFlow.builder()
+                    .userId(userId)
+                    .flowType(WalletFlow.TYPE_CONSUME)
+                    .amount(totalAmount)
+                    .bizNo(sh.getId())
+                    .remark("钱包支付二手书订单")
+                    .createTime(now)
+                    .build());
+            secondHandListingService.finalizeSoldForWalletPaidOrder(sh);
+        }
+        return OrderSubmitVO.builder()
+                .id(sh.getId())
+                .orderNumber(sh.getId())
+                .orderTime(sh.getOrderTime())
+                .orderAmount(sh.getTotalAmount())
+                .build();
+    }
+
     private String generateOrderNo(Long userId) {
         long ts = System.currentTimeMillis();
         int rnd = ThreadLocalRandom.current().nextInt(1000, 10000);
@@ -171,6 +264,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
         Page<Orders> p = new Page<>(page, pageSize);
         LambdaQueryWrapper<Orders> qw = new LambdaQueryWrapper<>();
         qw.eq(Orders::getUserId, userId)
+                .isNull(Orders::getSecondHandListingId)
                 .orderByDesc(Orders::getOrderTime);
         if (status != null) {
             qw.eq(Orders::getStatus, status);
@@ -178,8 +272,105 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
         if (deliveryWay != null) {
             qw.eq(Orders::getDeliveryWay, deliveryWay);
         }
-        this.page(p, qw);
+        try {
+            this.page(p, qw);
+        } catch (Exception e) {
+            log.warn("orders 普通订单分页失败（请确认 orders 表含 second_hand_listing_id 列）: {}", e.toString());
+            return new PageResult(0L, new ArrayList<>());
+        }
         return new PageResult(p.getTotal(), p.getRecords());
+    }
+
+    @Override
+    public PageResult pageSecondHandQuery4User(int page, int pageSize, Integer status, Integer deliveryWay) {
+        Long userId = BaseContext.getCurrentId();
+        if (userId == null) {
+            throw new BaseException(MessageConstant.LOGIN_FAILED);
+        }
+        LambdaQueryWrapper<Orders> qw = new LambdaQueryWrapper<>();
+        qw.eq(Orders::getUserId, userId)
+                .isNotNull(Orders::getSecondHandListingId)
+                .orderByDesc(Orders::getOrderTime)
+                .last("LIMIT " + SECOND_HAND_MERGE_CAP);
+        if (status != null) {
+            qw.eq(Orders::getStatus, status);
+        }
+        if (deliveryWay != null) {
+            qw.eq(Orders::getDeliveryWay, deliveryWay);
+        }
+        List<Orders> legacy;
+        try {
+            legacy = orderMapper.selectList(qw);
+        } catch (Exception e) {
+            log.warn("orders 二手历史合并查询失败（请确认 orders 表含 second_hand_listing_id）: {}", e.toString());
+            legacy = Collections.emptyList();
+        }
+
+        LambdaQueryWrapper<SecondHandOrder> qw2 = new LambdaQueryWrapper<>();
+        qw2.eq(SecondHandOrder::getUserId, userId)
+                .orderByDesc(SecondHandOrder::getOrderTime)
+                .last("LIMIT " + SECOND_HAND_MERGE_CAP);
+        if (status != null) {
+            qw2.eq(SecondHandOrder::getStatus, status);
+        }
+        if (deliveryWay != null) {
+            qw2.eq(SecondHandOrder::getDeliveryWay, deliveryWay);
+        }
+        List<SecondHandOrder> shRows = safeListSecondHandOrders(qw2);
+
+        List<OrderVO> merged = new ArrayList<>();
+        for (Orders o : legacy) {
+            merged.add(toOrderVoListRow(o));
+        }
+        for (SecondHandOrder s : shRows) {
+            merged.add(toOrderVoListRow(s));
+        }
+        merged.sort((a, b) -> {
+            LocalDateTime ta = a.getOrderTime();
+            LocalDateTime tb = b.getOrderTime();
+            if (tb == null) {
+                return ta == null ? 0 : -1;
+            }
+            if (ta == null) {
+                return 1;
+            }
+            return tb.compareTo(ta);
+        });
+        long total = merged.size();
+        int from = (page - 1) * pageSize;
+        int to = Math.min(from + pageSize, merged.size());
+        List<OrderVO> pageRecords = from >= merged.size() ? new ArrayList<>() : new ArrayList<>(merged.subList(from, to));
+        return new PageResult(total, pageRecords);
+    }
+
+    private OrderVO toOrderVoListRow(Orders o) {
+        return OrderVO.builder()
+                .id(o.getId())
+                .orderNumber(o.getId())
+                .userId(o.getUserId())
+                .totalAmount(o.getTotalAmount())
+                .status(o.getStatus())
+                .payStatus(o.getPayStatus())
+                .orderTime(o.getOrderTime())
+                .payTime(o.getPayTime())
+                .deliveryWay(o.getDeliveryWay())
+                .secondHandListingId(o.getSecondHandListingId())
+                .build();
+    }
+
+    private OrderVO toOrderVoListRow(SecondHandOrder s) {
+        return OrderVO.builder()
+                .id(s.getId())
+                .orderNumber(s.getId())
+                .userId(s.getUserId())
+                .totalAmount(s.getTotalAmount())
+                .status(s.getStatus())
+                .payStatus(s.getPayStatus())
+                .orderTime(s.getOrderTime())
+                .payTime(s.getPayTime())
+                .deliveryWay(s.getDeliveryWay())
+                .secondHandListingId(s.getListingId())
+                .build();
     }
 
     @Override
@@ -190,10 +381,23 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
         }
         Map<Integer, Long> counts = new HashMap<>();
         for (int s = Orders.PENDING_PAYMENT; s <= Orders.REFUNDED; s++) {
-            long cnt = this.count(new LambdaQueryWrapper<Orders>()
-                    .eq(Orders::getUserId, userId)
-                    .eq(Orders::getStatus, s));
+            long cnt = safeCountOrdersByListingSegment(userId, s, false);
             counts.put(s, cnt);
+        }
+        return counts;
+    }
+
+    @Override
+    public Map<Integer, Long> statusCountSecondHand4User() {
+        Long userId = BaseContext.getCurrentId();
+        if (userId == null) {
+            throw new BaseException(MessageConstant.LOGIN_FAILED);
+        }
+        Map<Integer, Long> counts = new HashMap<>();
+        for (int s = Orders.PENDING_PAYMENT; s <= Orders.REFUNDED; s++) {
+            long c1 = safeCountOrdersByListingSegment(userId, s, true);
+            long c2 = safeCountSecondHandOrders(userId, s);
+            counts.put(s, c1 + c2);
         }
         return counts;
     }
@@ -206,24 +410,46 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
             throw new BaseException(MessageConstant.LOGIN_FAILED);
         }
         Orders order = this.getById(id);
-        if (order == null || !userId.equals(order.getUserId())) {
+        if (order != null) {
+            if (!userId.equals(order.getUserId())) {
+                throw new BaseException(MessageConstant.ORDER_NOT_FOUND);
+            }
+            if (!Orders.COMPLETED.equals(order.getStatus()) || !Orders.PAID.equals(order.getPayStatus())) {
+                throw new BaseException("当前订单状态不支持退货");
+            }
+            LocalDateTime baseTime = order.getDeliveryTime() != null ? order.getDeliveryTime() : order.getOrderTime();
+            if (baseTime == null || baseTime.isBefore(LocalDateTime.now().minusDays(7))) {
+                throw new BaseException("仅支持近7天内订单申请退货");
+            }
+            String applyReason = (reason == null || reason.trim().isEmpty()) ? "用户申请退货" : ("用户申请退货：" + reason.trim());
+            Orders upd = Orders.builder()
+                    .id(order.getId())
+                    .status(Orders.RETURN_REQUESTED)
+                    .cancelReason(applyReason)
+                    .updateTime(LocalDateTime.now())
+                    .build();
+            this.updateById(upd);
+            return;
+        }
+        SecondHandOrder sh = safeGetSecondHandById(id);
+        if (sh == null || !userId.equals(sh.getUserId())) {
             throw new BaseException(MessageConstant.ORDER_NOT_FOUND);
         }
-        if (!Orders.COMPLETED.equals(order.getStatus()) || !Orders.PAID.equals(order.getPayStatus())) {
+        if (!Orders.COMPLETED.equals(sh.getStatus()) || !Orders.PAID.equals(sh.getPayStatus())) {
             throw new BaseException("当前订单状态不支持退货");
         }
-        LocalDateTime baseTime = order.getDeliveryTime() != null ? order.getDeliveryTime() : order.getOrderTime();
+        LocalDateTime baseTime = sh.getDeliveryTime() != null ? sh.getDeliveryTime() : sh.getOrderTime();
         if (baseTime == null || baseTime.isBefore(LocalDateTime.now().minusDays(7))) {
             throw new BaseException("仅支持近7天内订单申请退货");
         }
         String applyReason = (reason == null || reason.trim().isEmpty()) ? "用户申请退货" : ("用户申请退货：" + reason.trim());
-        Orders upd = Orders.builder()
-                .id(order.getId())
+        SecondHandOrder upd = SecondHandOrder.builder()
+                .id(sh.getId())
                 .status(Orders.RETURN_REQUESTED)
                 .cancelReason(applyReason)
                 .updateTime(LocalDateTime.now())
                 .build();
-        this.updateById(upd);
+        secondHandOrderMapper.updateById(upd);
     }
 
     public OrderVO details(String id) {
@@ -232,52 +458,101 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
             throw new BaseException(MessageConstant.LOGIN_FAILED);
         }
         Orders order = this.getById(id);
-        if (order == null || !userId.equals(order.getUserId())) {
-            throw new BaseException(MessageConstant.ORDER_NOT_FOUND);
+        // 仅当 orders 表存在且属于当前用户时才走普通订单详情；否则继续查 second_hand_order（避免 id 与二手订单冲突或误读他人订单）
+        if (order != null && userId.equals(order.getUserId())) {
+            List<OrderDetail> items = orderDetailMapper.selectList(new LambdaQueryWrapper<OrderDetail>()
+                    .eq(OrderDetail::getOrderId, id));
+            List<OrderItemVO> itemVOs = new ArrayList<>();
+            for (OrderDetail d : items) {
+                itemVOs.add(OrderItemVO.builder()
+                        .bookId(d.getBookId())
+                        .title(d.getTitle())
+                        .coverImage(d.getCoverImage())
+                        .quantity(d.getQuantity())
+                        .price(d.getPrice() != null ? d.getPrice() : BigDecimal.ZERO)
+                        .build());
+            }
+            String address = order.getAddress();
+            if ((address == null || address.trim().isEmpty()) && order.getAddressBookId() != null) {
+                AddressBook ab = addressBookMapper.selectById(order.getAddressBookId());
+                if (ab != null) {
+                    address = buildAddress(ab);
+                }
+            }
+            return OrderVO.builder()
+                    .id(order.getId())
+                    .orderNumber(order.getId())
+                    .userId(order.getUserId())
+                    .totalAmount(order.getTotalAmount())
+                    .status(order.getStatus())
+                    .payStatus(order.getPayStatus())
+                    .orderTime(order.getOrderTime())
+                    .payTime(order.getPayTime())
+                    .addressBookId(order.getAddressBookId())
+                    .payWay(order.getPayWay())
+                    .remark(order.getRemark())
+                    .deliveryStatus(order.getDeliveryStatus())
+                    .deliveryWay(order.getDeliveryWay())
+                    .estimatedDeliveryTime(order.getEstimatedDeliveryTime())
+                    .deliveryTime(order.getDeliveryTime())
+                    .consignee(order.getConsignee())
+                    .phone(order.getPhone())
+                    .address(address)
+                    .username(order.getUsername())
+                    .cancelReason(order.getCancelReason())
+                    .cancelTime(order.getCancelTime())
+                    .rejectionReason(order.getRejectionReason())
+                    .secondHandListingId(order.getSecondHandListingId())
+                    .items(itemVOs)
+                    .build();
         }
-        List<OrderDetail> items = orderDetailMapper.selectList(new LambdaQueryWrapper<OrderDetail>()
-                .eq(OrderDetail::getOrderId, id));
-        List<OrderItemVO> itemVOs = new ArrayList<>();
-        for (OrderDetail d : items) {
-            itemVOs.add(OrderItemVO.builder()
-                    .bookId(d.getBookId())
-                    .title(d.getTitle())
-                    .coverImage(d.getCoverImage())
-                    .quantity(d.getQuantity())
-                    .price(d.getPrice())
-                    .build());
+        SecondHandOrder sh = safeGetSecondHandById(id);
+        if (sh != null && userId.equals(sh.getUserId())) {
+            return buildOrderDetailFromSecondHand(sh);
         }
-        String address = order.getAddress();
-        if ((address == null || address.trim().isEmpty()) && order.getAddressBookId() != null) {
-            AddressBook ab = addressBookMapper.selectById(order.getAddressBookId());
+        throw new BaseException(MessageConstant.ORDER_NOT_FOUND);
+    }
+
+    private OrderVO buildOrderDetailFromSecondHand(SecondHandOrder sh) {
+        OrderItemVO item = OrderItemVO.builder()
+                .bookId(sh.getBookId())
+                .title(sh.getBookTitle() != null ? sh.getBookTitle() : "二手书")
+                .coverImage(sh.getCoverImage())
+                .quantity(1)
+                .price(sh.getTotalAmount())
+                .build();
+        String address = sh.getAddress();
+        if ((address == null || address.trim().isEmpty()) && sh.getAddressBookId() != null) {
+            AddressBook ab = addressBookMapper.selectById(sh.getAddressBookId());
             if (ab != null) {
                 address = buildAddress(ab);
             }
         }
         return OrderVO.builder()
-                .id(order.getId())
-                .orderNumber(order.getId())
-                .userId(order.getUserId())
-                .totalAmount(order.getTotalAmount())
-                .status(order.getStatus())
-                .payStatus(order.getPayStatus())
-                .orderTime(order.getOrderTime())
-                .payTime(order.getPayTime())
-                .addressBookId(order.getAddressBookId())
-                .payWay(order.getPayWay())
-                .remark(order.getRemark())
-                .deliveryStatus(order.getDeliveryStatus())
-                .deliveryWay(order.getDeliveryWay())
-                .estimatedDeliveryTime(order.getEstimatedDeliveryTime())
-                .deliveryTime(order.getDeliveryTime())
-                .consignee(order.getConsignee())
-                .phone(order.getPhone())
+                .id(sh.getId())
+                .orderNumber(sh.getId())
+                .userId(sh.getUserId())
+                .totalAmount(sh.getTotalAmount())
+                .status(sh.getStatus())
+                .payStatus(sh.getPayStatus())
+                .orderTime(sh.getOrderTime())
+                .payTime(sh.getPayTime())
+                .addressBookId(sh.getAddressBookId())
+                .payWay(sh.getPayWay())
+                .remark(sh.getRemark())
+                .deliveryStatus(sh.getDeliveryStatus())
+                .deliveryWay(sh.getDeliveryWay())
+                .estimatedDeliveryTime(sh.getEstimatedDeliveryTime())
+                .deliveryTime(sh.getDeliveryTime())
+                .consignee(sh.getConsignee())
+                .phone(sh.getPhone())
                 .address(address)
-                .username(order.getUsername())
-                .cancelReason(order.getCancelReason())
-                .cancelTime(order.getCancelTime())
-                .rejectionReason(order.getRejectionReason())
-                .items(itemVOs)
+                .username(sh.getUsername())
+                .cancelReason(sh.getCancelReason())
+                .cancelTime(sh.getCancelTime())
+                .rejectionReason(sh.getRejectionReason())
+                .secondHandListingId(sh.getListingId())
+                .items(Collections.singletonList(item))
                 .build();
     }
 
@@ -312,20 +587,40 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
             throw new BaseException(MessageConstant.LOGIN_FAILED);
         }
         Orders order = this.getById(id);
-        if (order == null || !userId.equals(order.getUserId())) {
+        if (order != null) {
+            if (!userId.equals(order.getUserId())) {
+                throw new BaseException(MessageConstant.ORDER_NOT_FOUND);
+            }
+            if (order.getPayStatus() != null && order.getPayStatus() == Orders.PAID) {
+                throw new BaseException(MessageConstant.ORDER_STATUS_ERROR);
+            }
+            Orders upd = Orders.builder()
+                    .id(order.getId())
+                    .status(Orders.CANCELLED)
+                    .cancelReason("用户取消")
+                    .cancelTime(LocalDateTime.now().toString())
+                    .updateTime(LocalDateTime.now())
+                    .build();
+            this.updateById(upd);
+            secondHandListingService.releaseIfOrderCancelled(id);
+            return;
+        }
+        SecondHandOrder sh = safeGetSecondHandById(id);
+        if (sh == null || !userId.equals(sh.getUserId())) {
             throw new BaseException(MessageConstant.ORDER_NOT_FOUND);
         }
-        if (order.getPayStatus() != null && order.getPayStatus() == Orders.PAID) {
+        if (sh.getPayStatus() != null && sh.getPayStatus() == Orders.PAID) {
             throw new BaseException(MessageConstant.ORDER_STATUS_ERROR);
         }
-        Orders upd = Orders.builder()
-                .id(order.getId())
+        SecondHandOrder upd = SecondHandOrder.builder()
+                .id(sh.getId())
                 .status(Orders.CANCELLED)
                 .cancelReason("用户取消")
                 .cancelTime(LocalDateTime.now().toString())
                 .updateTime(LocalDateTime.now())
                 .build();
-        this.updateById(upd);
+        secondHandOrderMapper.updateById(upd);
+        secondHandListingService.releaseIfOrderCancelled(id);
     }
 
     public void repetition(String id) {
@@ -333,14 +628,76 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
         if (userId == null) {
             throw new BaseException(MessageConstant.LOGIN_FAILED);
         }
+        if (safeGetSecondHandById(id) != null) {
+            throw new BaseException("二手书订单不支持再来一单");
+        }
         Orders order = this.getById(id);
         if (order == null || !userId.equals(order.getUserId())) {
             throw new BaseException(MessageConstant.ORDER_NOT_FOUND);
+        }
+        if (order.getSecondHandListingId() != null) {
+            throw new BaseException("二手书订单不支持再来一单");
         }
         List<OrderDetail> items = orderDetailMapper.selectList(new LambdaQueryWrapper<OrderDetail>()
                 .eq(OrderDetail::getOrderId, id));
         for (OrderDetail d : items) {
             cartService.add(d.getBookId(), d.getQuantity());
+        }
+    }
+
+    /**
+     * 按 second_hand_listing_id 是否为空统计 orders；缺列或 SQL 异常时返回 0，避免普通订单与二手 Tab 整页崩溃。
+     *
+     * @param legacySecondHandInOrders true：历史写在 orders 且 listing_id 非空；false：普通订单（listing_id 为空）
+     */
+    private long safeCountOrdersByListingSegment(Long userId, int status, boolean legacySecondHandInOrders) {
+        try {
+            LambdaQueryWrapper<Orders> qw = new LambdaQueryWrapper<Orders>()
+                    .eq(Orders::getUserId, userId)
+                    .eq(Orders::getStatus, status);
+            if (legacySecondHandInOrders) {
+                qw.isNotNull(Orders::getSecondHandListingId);
+            } else {
+                qw.isNull(Orders::getSecondHandListingId);
+            }
+            return orderMapper.selectCount(qw);
+        } catch (Exception e) {
+            log.warn("orders 条件统计失败（请确认已执行 sql/second_hand_listing.sql 中的 ALTER）: {}", e.toString());
+            return 0L;
+        }
+    }
+
+    /** 未执行 second_hand_order 建表时避免整接口失败，降级为空列表 */
+    private List<SecondHandOrder> safeListSecondHandOrders(LambdaQueryWrapper<SecondHandOrder> qw) {
+        try {
+            return secondHandOrderMapper.selectList(qw);
+        } catch (Exception e) {
+            log.warn("second_hand_order 列表查询失败（请确认已执行 sql/second_hand_order.sql）: {}", e.toString());
+            return Collections.emptyList();
+        }
+    }
+
+    private long safeCountSecondHandOrders(Long userId, int status) {
+        try {
+            return secondHandOrderMapper.selectCount(new LambdaQueryWrapper<SecondHandOrder>()
+                    .eq(SecondHandOrder::getUserId, userId)
+                    .eq(SecondHandOrder::getStatus, status));
+        } catch (Exception e) {
+            log.warn("second_hand_order 统计失败: {}", e.toString());
+            return 0L;
+        }
+    }
+
+    /** 表不存在或查询异常时返回 null，由上层按「无此单」处理，避免未知错误 */
+    private SecondHandOrder safeGetSecondHandById(String id) {
+        if (id == null) {
+            return null;
+        }
+        try {
+            return secondHandOrderMapper.selectById(id);
+        } catch (Exception e) {
+            log.warn("second_hand_order 按 id 查询失败 id={}: {}", id, e.toString());
+            return null;
         }
     }
 }

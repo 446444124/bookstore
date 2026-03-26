@@ -101,9 +101,9 @@ public class UserController {
             }
         }
         //校验手机号合法性(11位纯数字)
-        if (!user.getPhone().matches("^\\d{11}$")) {
-        return Result.error("手机号格式错误");
-            }
+        if (user.getPhone() != null && !user.getPhone().matches("^\\d{11}$")) {
+            return Result.error("手机号格式错误");
+        }
 
         userService.updateById(user);
         return Result.success();

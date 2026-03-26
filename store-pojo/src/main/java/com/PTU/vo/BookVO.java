@@ -7,7 +7,7 @@ import java.math.BigDecimal;
 
 @Data
 public class BookVO {
-    private Integer id; // 主键ID
+    private Long id; // 主键ID（与 Book.id 一致，避免 Long→Integer 拷贝异常）
 
     private String title; // 书名
     private String author; // 作者

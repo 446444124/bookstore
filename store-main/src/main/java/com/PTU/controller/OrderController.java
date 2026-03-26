@@ -1,6 +1,7 @@
 package com.PTU.controller;
 
 import com.PTU.dto.OrdersSubmitDTO;
+import com.PTU.dto.SecondHandOrderSubmitDTO;
 import com.PTU.result.Result;
 import com.PTU.service.OrderService;
 import com.PTU.result.PageResult;
@@ -28,6 +29,13 @@ public class OrderController {
        log.info("订单数据：{}",ordersSubmitDTO);
         OrderSubmitVO orderSubmitVO =orderService.submitOrder(ordersSubmitDTO);
         return Result.success(orderSubmitVO);
+    }
+
+    @PostMapping("/submitSecondHand")
+    @ApiOperation("二手书下单（单件）")
+    public Result<OrderSubmitVO> submitSecondHand(@RequestBody SecondHandOrderSubmitDTO dto) {
+        log.info("二手书订单：{}", dto);
+        return Result.success(orderService.submitSecondHandOrder(dto));
     }
     @GetMapping("/page")
     @ApiOperation("个人订单分页查询")

@@ -7,6 +7,19 @@
         </el-carousel-item>
       </el-carousel>
     </section>
+    <section class="second-hand-banner" aria-label="二手书专区入口">
+      <div class="sh-banner-inner">
+        <div class="sh-banner-text">
+          <div class="sh-banner-kicker">校园循环 · 估价透明</div>
+          <div class="sh-banner-title">二手书专区</div>
+          <div class="sh-banner-desc">本店在售图书可回收估价上架；按成色自动折算原价，同学闲置更实惠。</div>
+        </div>
+        <div class="sh-banner-actions">
+          <el-button type="warning" size="large" round class="sh-btn-main" @click="onSecondHandClick">进入二手书专区</el-button>
+          <el-button size="large" round class="sh-btn-sub" @click="onSecondHandSellClick">我要卖书</el-button>
+        </div>
+      </div>
+    </section>
     <section class="quick-cats">
       <div class="title">热门分类</div>
       <div class="cats">
@@ -23,7 +36,9 @@
     <section class="featured">
       <div class="title-row">
         <div class="title">精选图书</div>
-        <el-button type="primary" link @click="onMoreClick">查看更多</el-button>
+        <div class="title-actions">
+          <el-button type="primary" @click="onMoreClick">查看全部</el-button>
+        </div>
       </div>
       <div class="grid">
         <el-card v-for="b in featuredBooks" :key="b.id" class="book-card" shadow="hover">
@@ -172,6 +187,18 @@ const onMoreClick = () => {
   }
   router.push('/browse')
 }
+const onSecondHandClick = () => {
+  router.push('/second-hand')
+}
+const onSecondHandSellClick = () => {
+  const tk = localStorage.getItem('token') || ''
+  if (!tk) {
+    ElMessage.warning('请先登录')
+    router.push({ path: '/login', query: { redirect: '/second-hand/sell', msg: '请先登录' } })
+    return
+  }
+  router.push('/second-hand/sell')
+}
 const onAddToCart = (b) => {
   if (needLogin()) {
     ElMessage.warning('请先登录')
@@ -185,21 +212,27 @@ const onAddToCart = (b) => {
       const tk = localStorage.getItem('token') || ''
       return tk ? { authentication: tk } : {}
     })()
-  }).then(resp => {
-    if (resp.ok) {
+  }).then(async (resp) => {
+    let data = {}
+    if (resp.headers.get('content-type')?.includes('application/json')) {
+      try {
+        data = await resp.json()
+      } catch (_) {}
+    }
+    if (resp.status === 401) {
+      ElMessage.warning('登录已过期，请重新登录')
+      router.push({ path: '/login', query: { redirect: '/', msg: '请先登录' } })
+      return
+    }
+    if (resp.ok && Number(data.code) === 1) {
       ElMessage.success('已加入购物车')
       refreshCartCount()
     } else {
-      ElMessage.error('加入购物车失败')
+      ElMessage.error(data?.msg || '加入购物车失败')
     }
   }).catch(() => ElMessage.error('加入购物车失败'))
 }
 const onDetail = (b) => {
-  if (needLogin()) {
-    ElMessage.warning('请先登录')
-    router.push('/login')
-    return
-  }
   if (b && b.id != null) {
     router.push(`/book/${b.id}`)
   }
@@ -229,6 +262,65 @@ const onCatClick = (c) => {
   object-fit: cover;
   border-radius: var(--radius);
 }
+.second-hand-banner {
+  margin-top: 20px;
+  padding: 22px 24px;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--el-color-warning) 45%, var(--border));
+  background: linear-gradient(120deg, color-mix(in srgb, var(--el-color-warning-light-9) 85%, #fff) 0%, var(--surface) 55%, color-mix(in srgb, var(--el-color-warning-light-9) 70%, #fff) 100%);
+  box-shadow: var(--shadow-sm);
+}
+.sh-banner-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.sh-banner-text {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+.sh-banner-kicker {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--el-color-warning-dark-2);
+  margin-bottom: 6px;
+}
+.sh-banner-title {
+  font-family: var(--font-heading);
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--text-main);
+  line-height: 1.2;
+  margin-bottom: 8px;
+}
+.sh-banner-desc {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-sub);
+  max-width: 560px;
+}
+.sh-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.sh-btn-main {
+  font-weight: 700;
+  padding: 12px 22px;
+  font-size: 15px;
+}
+.sh-btn-sub {
+  font-weight: 600;
+  padding: 12px 22px;
+  font-size: 15px;
+}
 .quick-cats, .featured {
   margin-top: 18px;
   background: var(--surface);
@@ -238,16 +330,22 @@ const onCatClick = (c) => {
   box-shadow: var(--shadow-sm);
 }
 .title {
+  font-family: var(--font-heading);
   font-weight: 700;
   font-size: 20px;
   margin-bottom: 12px;
-  letter-spacing: .2px;
+  letter-spacing: 0.02em;
 }
 .title-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 8px;
+}
+.title-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 .cats {
   display: flex;
@@ -289,11 +387,17 @@ const onCatClick = (c) => {
   min-height: 280px;
   border-radius: var(--radius);
   overflow: hidden;
-  transition: transform .22s ease, box-shadow .22s ease;
+  transition: box-shadow 0.22s ease, border-color 0.22s ease;
+  border: 1px solid transparent;
 }
 .book-card:hover {
-  transform: translateY(-4px);
   box-shadow: var(--shadow-md);
+  border-color: color-mix(in srgb, var(--primary) 22%, var(--border));
+}
+@media (prefers-reduced-motion: reduce) {
+  .book-card {
+    transition: none;
+  }
 }
 .cover {
   width: 152px;
@@ -329,6 +433,26 @@ const onCatClick = (c) => {
   justify-content: center;
 }
 @media (max-width: 768px) {
+  .second-hand-banner {
+    margin-top: 14px;
+    padding: 16px 14px;
+  }
+  .sh-banner-inner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .sh-banner-title {
+    font-size: 22px;
+  }
+  .sh-banner-actions {
+    justify-content: center;
+  }
+  .sh-btn-main,
+  .sh-btn-sub {
+    flex: 1 1 auto;
+    min-width: 140px;
+    justify-content: center;
+  }
   .quick-cats, .featured {
     padding: 14px;
     border-radius: var(--radius);

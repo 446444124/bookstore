@@ -1,0 +1,21 @@
+---
+description: After Java changes, compile and restart backend automatically when needed.
+alwaysApply: true
+---
+
+# Java 修改后自动编译
+
+当本次会话中修改了任意 `*.java` 或 `store-*` / `pom.xml` 等需编译才能验证的内容时，在结束该轮修改前**由助手直接执行**（勿只口述让用户编译）：
+
+- 根目录：`mvn -q compile -DskipTests -pl store-main,store-api -am`（或按需包含改动的模块；若改了 `store-common` / `store-pojo` 且其它模块依赖，用 `mvn -q install -DskipTests`）
+- 编译失败则继续修到通过或明确说明阻塞原因。
+
+# 后端修改后自动重启
+
+当本次修改涉及 `store-main`、`store-api`、`store-common`、`store-pojo` 等需重启 JVM 才能生效的代码时，在提交说明前**自动执行**项目根目录下的：
+
+`powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\restart-backend.ps1`
+
+（或等价的：先释放 8080/8090 再分别 `mvn spring-boot:run`。）
+
+前端仅改 `_web` / `_web_user` 且使用 `npm run dev` 时一般**无需**重启后端；若改了前端且用户用静态 `dist`，助手应直接执行对应目录下的 `npm run build`。

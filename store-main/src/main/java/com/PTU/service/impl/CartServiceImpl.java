@@ -22,14 +22,16 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
     private BookService bookService;
     @Override
     public void add(Long id, Integer num) {
-        int n = (num == null || num < 1) ? 1 : num;
-        // 多条重复记录时 getOne 会抛 TooManyResultsException → 全局异常「未知错误」；throwEx=false 取一条即可
+        int n = (num == null || num == 0) ? 1 : num;
         Cart cart1 = this.getOne(
                 new LambdaQueryWrapper<Cart>()
                         .eq(Cart::getUserId, BaseContext.getCurrentId())
                         .eq(Cart::getBookId, id),
                 false);
         if (cart1 == null) {
+            if (n < 1) {
+                throw new BaseException("购物车中不存在该商品");
+            }
             Book book = bookService.getById(id);
             if (book == null) {
                 throw new BaseException("图书不存在或已下架，无法加入购物车");
@@ -59,8 +61,9 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
             throw new BaseException("图书价格异常，无法加入购物车");
         }
         int base = cart1.getQuantity() != null ? cart1.getQuantity() : 0;
-        cart1.setQuantity(base + n);
-        cart1.setAmount(unit.multiply(BigDecimal.valueOf(cart1.getQuantity())));
+        int newQty = Math.max(base + n, 1);
+        cart1.setQuantity(newQty);
+        cart1.setAmount(unit.multiply(BigDecimal.valueOf(newQty)));
         this.updateById(cart1);
     }
 

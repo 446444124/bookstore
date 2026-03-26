@@ -27,43 +27,47 @@ public class AliOssUtil {
      * @param objectName
      * @return
      */
-    public String upload(byte[] bytes, String objectName) {
-
-        // 创建OSSClient实例。
-        OSS ossClient = new OSSClientBuilder().build(endpoint, accessKeyId, accessKeySecret);
-
+    public String upload(byte[] bytes, String objectName) throws ClientException, OSSException {
+        String clientEndpoint = normalizeClientEndpoint(endpoint);
+        OSS ossClient = new OSSClientBuilder().build(clientEndpoint, accessKeyId, accessKeySecret);
         try {
-            // 创建PutObject请求。
             ossClient.putObject(bucketName, objectName, new ByteArrayInputStream(bytes));
-        } catch (OSSException oe) {
-            System.out.println("Caught an OSSException, which means your request made it to OSS, "
-                    + "but was rejected with an error response for some reason.");
-            System.out.println("Error Message:" + oe.getErrorMessage());
-            System.out.println("Error Code:" + oe.getErrorCode());
-            System.out.println("Request ID:" + oe.getRequestId());
-            System.out.println("Host ID:" + oe.getHostId());
-        } catch (ClientException ce) {
-            System.out.println("Caught an ClientException, which means the client encountered "
-                    + "a serious internal problem while trying to communicate with OSS, "
-                    + "such as not being able to access the network.");
-            System.out.println("Error Message:" + ce.getMessage());
         } finally {
-            if (ossClient != null) {
-                ossClient.shutdown();
-            }
+            ossClient.shutdown();
         }
 
-        //文件访问路径规则 https://BucketName.Endpoint/ObjectName
-        StringBuilder stringBuilder = new StringBuilder("https://");
-        stringBuilder
-                .append(bucketName)
-                .append(".")
-                .append(endpoint)
-                .append("/")
-                .append(objectName);
+        // 虚拟主机风格公网访问：https://BucketName.EndpointHost/ObjectName
+        // endpoint 若配置为 https://oss-xxx.aliyuncs.com，不能直接拼进 host，需先去掉协议
+        String hostOnly = stripScheme(endpoint);
+        String publicUrl = "https://" + bucketName + "." + hostOnly + "/" + objectName;
+        log.info("文件上传到: {}", publicUrl);
+        return publicUrl;
+    }
 
-        log.info("文件上传到:{}", stringBuilder.toString());
+    /** 供 SDK 使用：无协议时补全 https:// */
+    private static String normalizeClientEndpoint(String ep) {
+        if (ep == null || ep.trim().isEmpty()) {
+            return ep;
+        }
+        String s = ep.trim();
+        if (s.startsWith("http://") || s.startsWith("https://")) {
+            return s;
+        }
+        return "https://" + s;
+    }
 
-        return stringBuilder.toString();
+    /** 拼浏览器访问 URL 时只保留 oss-cn-xxx.aliyuncs.com 这一段 */
+    private static String stripScheme(String ep) {
+        if (ep == null) {
+            return "";
+        }
+        String s = ep.trim();
+        if (s.startsWith("https://")) {
+            return s.substring(8);
+        }
+        if (s.startsWith("http://")) {
+            return s.substring(7);
+        }
+        return s;
     }
 }

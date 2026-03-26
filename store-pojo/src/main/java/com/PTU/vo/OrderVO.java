@@ -38,4 +38,6 @@ public class OrderVO implements Serializable {
     private String cancelTime;
     private String rejectionReason;
     private List<OrderItemVO> items;
+    /** 非空表示该订单含二手书条目 */
+    private Long secondHandListingId;
 }

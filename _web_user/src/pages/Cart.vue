@@ -43,9 +43,12 @@
     <el-dialog v-model="orderDialogVisible" title="提交订单" width="560px">
       <el-form ref="orderFormRef" :model="orderForm" :rules="orderRules" label-width="120px">
         <el-form-item label="地址簿" prop="addressBookId">
-          <el-select v-model="orderForm.addressBookId" placeholder="请选择地址">
-            <el-option v-for="a in addresses" :key="String(a.id)" :label="a.label ? a.label + '（' + formatAddr(a) + '）' : formatAddr(a)" :value="a.id" />
-          </el-select>
+          <div class="addr-row">
+            <el-select v-model="orderForm.addressBookId" placeholder="请选择地址" class="addr-select">
+              <el-option v-for="a in addresses" :key="String(a.id)" :label="a.label ? a.label + '（' + formatAddr(a) + '）' : formatAddr(a)" :value="a.id" />
+            </el-select>
+            <el-button type="primary" link @click="openAddrDialog">新增地址</el-button>
+          </div>
         </el-form-item>
         <el-form-item label="配送方式" prop="deliveryWay">
           <el-radio-group v-model="orderForm.deliveryWay">
@@ -68,10 +71,26 @@
           />
         </el-form-item>
         <el-form-item label="付款方式" prop="payWay">
-          <el-select v-model="orderForm.payWay" placeholder="请选择付款方式">
-            <el-option :value="1" label="支付宝" />
-            <el-option :value="2" :label="`钱包支付（余额 ¥${toMoney(walletBalance)}）`" />
-          </el-select>
+          <el-radio-group v-model="orderForm.payWay" class="pay-way-group">
+            <el-radio :label="2" border class="pay-way-option">
+              <span class="pay-way-inner">
+                <img class="pay-way-ic" src="/wallet.svg" alt="wallet" />
+                <span class="pay-way-text">
+                  <span class="pay-way-title">钱包支付</span>
+                  <span class="pay-way-sub">余额 ¥{{ toMoney(walletBalance) }}</span>
+                </span>
+              </span>
+            </el-radio>
+            <el-radio :label="1" border class="pay-way-option">
+              <span class="pay-way-inner">
+                <img class="pay-way-ic" src="/alipay.svg" alt="alipay" />
+                <span class="pay-way-text">
+                  <span class="pay-way-title">支付宝</span>
+                  <span class="pay-way-sub">推荐</span>
+                </span>
+              </span>
+            </el-radio>
+          </el-radio-group>
         </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="orderForm.remark" type="textarea" placeholder="填写备注（选填）" />
@@ -87,6 +106,7 @@
         </div>
       </template>
     </el-dialog>
+    <AddressBookDialog v-model="addrDialogVisible" @saved="onAddressSaved" />
     <el-dialog v-model="orderSuccessVisible" title="下单成功" width="520px">
       <div class="order-success">
         <div>订单号：{{ orderSuccess.orderNumber }}</div>
@@ -108,6 +128,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { refreshCartCount, resetCartCount } from '../stores/cart'
+import AddressBookDialog from '../components/AddressBookDialog.vue'
 const router = useRouter()
 const defaultCover = '/default-book-cover.svg'
 const items = ref([])
@@ -180,11 +201,22 @@ const onQtyChange = async (row, delta) => {
       method: 'POST',
       headers: token ? { authentication: token } : {}
     })
-    if (resp.ok) {
+    let data = {}
+    if (resp.headers.get('content-type')?.includes('application/json')) {
+      try {
+        data = await resp.json()
+      } catch (_) {}
+    }
+    if (resp.status === 401) {
+      ElMessage.warning('登录已过期，请重新登录')
+      router.push({ path: '/login', query: { redirect: '/cart', msg: '请先登录' } })
+      return
+    }
+    if (resp.ok && Number(data.code) === 1) {
       loadCart()
       refreshCartCount()
     } else {
-      ElMessage.error('数量更新失败')
+      ElMessage.error(data?.msg || '数量更新失败')
     }
   } catch (_) {
     ElMessage.error('数量更新失败')
@@ -209,6 +241,8 @@ const onDelete = async (row) => {
     ElMessage.error('删除失败')
   }
 }
+const addrDialogVisible = ref(false)
+const addressIdsBeforeAdd = ref(new Set())
 const orderDialogVisible = ref(false)
 const orderFormRef = ref()
 const ordering = ref(false)
@@ -307,6 +341,15 @@ const loadWalletBalance = async () => {
       walletBalance.value = Number(d || 0)
     }
   } catch (_) {}
+}
+const openAddrDialog = () => {
+  addressIdsBeforeAdd.value = new Set(addresses.value.map((a) => String(a.id)))
+  addrDialogVisible.value = true
+}
+const onAddressSaved = async () => {
+  await loadAddresses()
+  const newAddr = addresses.value.find((a) => !addressIdsBeforeAdd.value.has(String(a.id)))
+  if (newAddr) orderForm.value.addressBookId = newAddr.id
 }
 const openOrder = async () => {
   await Promise.all([loadAddresses(), loadWalletBalance()])
@@ -482,5 +525,63 @@ onMounted(() => {
 .qty-val {
   min-width: 24px;
   text-align: center;
+}
+.addr-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.addr-select {
+  flex: 1;
+  min-width: 200px;
+}
+.pay-way-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+.pay-way-option {
+  margin: 0 !important;
+  width: 100%;
+  height: auto !important;
+  padding: 10px 12px !important;
+  border-radius: 10px !important;
+  border-color: #e5e7eb !important;
+}
+.pay-way-option.is-checked {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12);
+}
+.pay-way-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pay-way-ic {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+}
+.pay-way-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+.pay-way-title {
+  font-weight: 600;
+  color: #111827;
+}
+.pay-way-sub {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+@media (max-width: 520px) {
+  .pay-way-group {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

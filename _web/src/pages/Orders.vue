@@ -207,6 +207,8 @@ const callAction = async (path, successMsg) => {
   if (resp && resp.code === 1) {
     ElMessage.success(successMsg)
     fetchData()
+    // 让侧边栏徽标立刻刷新（否则要等 15s 轮询或手动刷新页面）
+    window.dispatchEvent(new CustomEvent('admin-badges-refresh'))
   } else {
     ElMessage.error(resp?.msg || '操作失败')
   }
