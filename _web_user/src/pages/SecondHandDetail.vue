@@ -84,11 +84,13 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import AddressBookDialog from '../components/AddressBookDialog.vue'
 import { normalizeConditionImageUrls } from '../utils/secondHandImages.js'
 
 const route = useRoute()
+const router = useRouter()
 const defaultCover = '/default-book-cover.svg'
 const row = ref(null)
 const loading = ref(false)
@@ -279,7 +281,8 @@ const onGoPay = async () => {
         ElMessage.success('钱包支付成功')
       }
       orderDialogVisible.value = false
-      loadDetail()
+      // 下单后条目可能被锁定/售出，继续刷新「仅在售」详情会报“已下架”。直接跳转到订单页查看更符合预期。
+      router.push({ path: '/orders', query: { scope: 'secondHand' } })
     } else {
       ElMessage.error(data?.msg || '下单失败')
     }

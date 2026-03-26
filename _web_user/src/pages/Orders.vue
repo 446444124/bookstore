@@ -145,9 +145,10 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
+const route = useRoute()
 const router = useRouter()
 const defaultCover = '/default-book-cover.svg'
 const orderScope = ref('book')
@@ -475,6 +476,11 @@ const goPay = async (row) => {
 }
 const goHome = () => router.push('/')
 onMounted(() => {
+  const q = route.query || {}
+  const scope = q.scope
+  if (scope === 'secondHand' || scope === 'book') {
+    orderScope.value = scope
+  }
   loadStatusCount()
   loadOrders()
 })

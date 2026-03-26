@@ -9,6 +9,7 @@ import com.PTU.exception.BaseException;
 import com.PTU.mapper.AdminOrderUnionMapper;
 import com.PTU.mapper.OrderDetailMapper;
 import com.PTU.mapper.OrderMapper;
+import com.PTU.mapper.SecondHandListingMapper;
 import com.PTU.mapper.SecondHandOrderMapper;
 import com.PTU.mapper.UserMapper;
 import com.PTU.mapper.WalletFlowMapper;
@@ -46,6 +47,8 @@ public class OrderServiceImpl implements OrderService {
     private UserMapper userMapper;
     @Autowired
     private WalletFlowMapper walletFlowMapper;
+    @Autowired
+    private SecondHandListingMapper secondHandListingMapper;
 
     @Override
     public PageResult pageQuery(int page, int pageSize, Integer status, Integer deliveryWay, String orderNumber, String phone) {
@@ -304,6 +307,10 @@ public class OrderServiceImpl implements OrderService {
                     .updateTime(LocalDateTime.now())
                     .build();
             orderMapper.updateById(upd);
+            // 二手书历史订单（写在 orders）退款通过：重新上架对应二手条目
+            if (order.getSecondHandListingId() != null) {
+                tryRelistSecondHand(order.getSecondHandListingId(), order.getId());
+            }
             return;
         }
         SecondHandOrder sh = safeGetSecondHandById(id);
@@ -336,6 +343,19 @@ public class OrderServiceImpl implements OrderService {
                 .updateTime(LocalDateTime.now())
                 .build();
         secondHandOrderMapper.updateById(upd);
+        // 二手书订单退款通过：重新上架对应二手条目
+        if (sh.getListingId() != null) {
+            tryRelistSecondHand(sh.getListingId(), sh.getId());
+        }
+    }
+
+    private void tryRelistSecondHand(Long listingId, String orderId) {
+        try {
+            secondHandListingMapper.relistAfterRefund(listingId, orderId);
+        } catch (Exception e) {
+            // 不中断退款主流程；数据库缺列/缺表时让退款仍可完成
+            log.warn("二手书退款后重上架失败 listingId={} orderId={}: {}", listingId, orderId, e.toString());
+        }
     }
 
     @Override
