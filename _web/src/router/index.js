@@ -10,6 +10,7 @@ import Orders from '../pages/Orders.vue'
 import Profile from '../pages/Profile.vue'
 import SecondHand from '../pages/SecondHand.vue'
 import SecondHandConfig from '../pages/SecondHandConfig.vue'
+import SystemNotice from '../pages/SystemNotice.vue'
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -34,6 +35,7 @@ const router = createRouter({
         { path: 'employees', component: Employees },
         { path: 'second-hand', component: SecondHand },
         { path: 'second-hand-config', component: SecondHandConfig },
+        { path: 'system-notice', component: SystemNotice },
         { path: 'profile', component: Profile }
       ]
     }

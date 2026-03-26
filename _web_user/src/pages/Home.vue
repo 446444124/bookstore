@@ -55,6 +55,22 @@
     </section>
   </div>
   <FloatingCartButton />
+
+  <el-dialog v-model="noticeVisible" width="520px" :close-on-click-modal="false" :show-close="false">
+    <template #header>
+      <div class="notice-head">
+        <div class="notice-title">{{ noticeTitle }}</div>
+        <div class="notice-sub">系统公告</div>
+      </div>
+    </template>
+    <div class="notice-content">{{ noticeContent }}</div>
+    <div class="notice-actions">
+      <el-checkbox v-model="dontShowAgain">不再提示</el-checkbox>
+      <div class="notice-btns">
+        <el-button type="primary" @click="onNoticeOk">我知道了</el-button>
+      </div>
+    </div>
+  </el-dialog>
 </template>
 
 <script setup>
@@ -73,6 +89,56 @@ const banners = ref([
 ])
 const hotCategories = ref([])
 const featuredBooks = ref([])
+
+const noticeVisible = ref(false)
+const notice = ref(null)
+const dontShowAgain = ref(false)
+const noticeTitle = ref('系统公告')
+const noticeContent = ref('')
+const NOTICE_DISMISS_KEY = 'systemNoticeDismissed'
+
+const shouldShowNotice = (n) => {
+  if (!n || n.id == null) return false
+  const enabled = n.enabled
+  if (enabled != null && Number(enabled) !== 1) return false
+  const sig = `${n.id}_${n.updateTime || ''}`
+  const dismissed = localStorage.getItem(NOTICE_DISMISS_KEY) || ''
+  return dismissed !== sig
+}
+
+const loadNotice = async () => {
+  try {
+    const token = localStorage.getItem('token') || ''
+    const resp = await fetch('/user/systemNotice/active', {
+      method: 'GET',
+      headers: token ? { authentication: token } : {}
+    })
+    const ct = resp.headers.get('content-type') || ''
+    let data = {}
+    if (ct.includes('application/json')) {
+      try { data = await resp.json() } catch (_) {}
+    }
+    if (!resp.ok) return
+    if (!(Number(data?.code) === 1)) return
+    const n = data?.data || null
+    notice.value = n
+    if (shouldShowNotice(n)) {
+      noticeTitle.value = (n?.title || '').trim() || '系统公告'
+      noticeContent.value = (n?.content || '').trim()
+      dontShowAgain.value = false
+      noticeVisible.value = true
+    }
+  } catch (_) {}
+}
+
+const onNoticeOk = () => {
+  const n = notice.value
+  if (dontShowAgain.value && n && n.id != null) {
+    const sig = `${n.id}_${n.updateTime || ''}`
+    localStorage.setItem(NOTICE_DISMISS_KEY, sig)
+  }
+  noticeVisible.value = false
+}
 
 const buildQs = (page = 1, pageSize = 12) => {
   const p = new URLSearchParams()
@@ -168,7 +234,10 @@ const loadHomeRecommend = async () => {
   } catch (_) {}
   await Promise.all([loadHotCategories(), loadBooks()])
 }
-onMounted(loadHomeRecommend)
+onMounted(() => {
+  loadHomeRecommend()
+  loadNotice()
+})
 watch(() => route.query.q, () => {
   loadBooks()
 })
@@ -366,6 +435,38 @@ const onCatClick = (c) => {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
   gap: 14px;
+}
+.notice-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.notice-title {
+  font-weight: 800;
+  font-size: 16px;
+  color: var(--text-main);
+}
+.notice-sub {
+  font-size: 12px;
+  color: var(--text-sub);
+}
+.notice-content {
+  white-space: pre-wrap;
+  color: var(--text-main);
+  line-height: 1.7;
+  font-size: 14px;
+  padding: 4px 2px 2px;
+}
+.notice-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+}
+.notice-btns {
+  display: inline-flex;
+  gap: 8px;
 }
 @media (max-width: 1200px) {
   .grid { grid-template-columns: repeat(5, 1fr); }
