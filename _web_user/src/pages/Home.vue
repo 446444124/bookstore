@@ -2,8 +2,14 @@
   <div class="home">
     <section class="hero">
       <el-carousel height="360px" indicator-position="outside">
-        <el-carousel-item v-for="(img, i) in banners" :key="i">
-          <img :src="img" class="banner-image" alt="banner" />
+        <el-carousel-item v-for="(b, i) in banners" :key="b?.id ?? i">
+          <img
+            :src="b?.imageUrl"
+            class="banner-image"
+            alt="banner"
+            :class="{ clickable: !!(b?.linkPath && String(b.linkPath).trim()) }"
+            @click="onBannerClick(b)"
+          />
         </el-carousel-item>
       </el-carousel>
     </section>
@@ -82,11 +88,12 @@ import { refreshCartCount } from '../stores/cart'
 const route = useRoute()
 const router = useRouter()
 const defaultCover = '/default-book-cover.svg'
-const banners = ref([
-  'https://images.unsplash.com/photo-1512820790803-83ca734da794?q=80&w=1920&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?q=80&w=1920&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1495446815901-a7297e633e8d?q=80&w=1920&auto=format&fit=crop'
-])
+const fallbackBanners = [
+  { id: 'fallback-1', imageUrl: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?q=80&w=1920&auto=format&fit=crop', linkPath: '' },
+  { id: 'fallback-2', imageUrl: 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?q=80&w=1920&auto=format&fit=crop', linkPath: '' },
+  { id: 'fallback-3', imageUrl: 'https://images.unsplash.com/photo-1495446815901-a7297e633e8d?q=80&w=1920&auto=format&fit=crop', linkPath: '' }
+]
+const banners = ref([...fallbackBanners])
 const hotCategories = ref([])
 const featuredBooks = ref([])
 
@@ -234,9 +241,35 @@ const loadHomeRecommend = async () => {
   } catch (_) {}
   await Promise.all([loadHotCategories(), loadBooks()])
 }
+const loadBanners = async () => {
+  try {
+    const token = localStorage.getItem('token') || ''
+    const resp = await fetch('/user/home/banners', {
+      method: 'GET',
+      headers: token ? { authentication: token } : {}
+    })
+    const ct = resp.headers.get('content-type') || ''
+    let data = {}
+    if (ct.includes('application/json')) {
+      try { data = await resp.json() } catch (_) {}
+    }
+    if (!resp.ok) return
+    if (!(Number(data?.code) === 1)) return
+    const rows = Array.isArray(data?.data) ? data.data : []
+    const mapped = rows
+      .map((r, idx) => ({
+        id: r?.id ?? `banner-${idx}`,
+        imageUrl: String(r?.imageUrl || '').trim(),
+        linkPath: (r?.linkPath == null ? '' : String(r.linkPath)).trim()
+      }))
+      .filter((r) => !!r.imageUrl)
+    if (mapped.length) banners.value = mapped
+  } catch (_) {}
+}
 onMounted(() => {
   loadHomeRecommend()
   loadNotice()
+  loadBanners()
 })
 watch(() => route.query.q, () => {
   loadBooks()
@@ -317,6 +350,15 @@ const onCatClick = (c) => {
   }
   router.push(target)
 }
+const onBannerClick = (b) => {
+  const p = (b?.linkPath == null ? '' : String(b.linkPath)).trim()
+  if (!p) return
+  if (/^https?:\/\//i.test(p)) {
+    window.open(p, '_blank')
+    return
+  }
+  router.push(p)
+}
 </script>
 
 <style>
@@ -330,6 +372,9 @@ const onCatClick = (c) => {
   height: 360px;
   object-fit: cover;
   border-radius: var(--radius);
+}
+.banner-image.clickable {
+  cursor: pointer;
 }
 .second-hand-banner {
   margin-top: 20px;
