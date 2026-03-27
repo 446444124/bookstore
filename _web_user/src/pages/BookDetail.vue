@@ -7,7 +7,9 @@
       </div>
     </div>
     <div class="body" v-if="loaded">
-      <img :src="book.coverImage || defaultCover" class="cover" alt="cover" />
+      <div class="detail-cover-wrap">
+        <img :src="book.coverImage || defaultCover" class="detail-cover" alt="cover" />
+      </div>
       <div class="info">
         <div class="name">{{ book.title }}</div>
         <div class="author">作者：{{ book.author }}</div>
@@ -115,7 +117,7 @@ const addToCart = () => {
 }
 </script>
 
-<style>
+<style scoped>
 .detail {
   max-width: 1000px;
   margin: 0 auto;
@@ -133,15 +135,22 @@ const addToCart = () => {
 }
 .body {
   display: grid;
-  grid-template-columns: 240px 1fr;
-  gap: 16px;
+  grid-template-columns: 340px 1fr;
+  gap: 20px;
   background: #fff;
   border-radius: 12px;
   padding: 12px;
 }
-.cover {
-  width: 220px;
-  height: 220px;
+.detail-cover-wrap {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+.detail-cover {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  max-height: 460px;
   border-radius: 8px;
   background: #f5f7fa;
   object-fit: cover;
@@ -168,5 +177,13 @@ const addToCart = () => {
 .loading {
   text-align: center;
   color: #606266;
+}
+@media (max-width: 768px) {
+  .body {
+    grid-template-columns: 1fr;
+  }
+  .detail-cover {
+    max-height: 520px;
+  }
 }
 </style>

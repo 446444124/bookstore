@@ -36,6 +36,10 @@ export default defineConfig({
     host: true,
     port: 5173,
     strictPort: true,
+    // 内网穿透给外部用户演示时，为避免 HMR WebSocket 在代理链路中反复断开导致页面频闪刷新，直接关闭 HMR。
+    hmr: false,
+    // 兼容 Vite 的 Host 检查（不同版本字段略有差异；未知字段会被忽略）
+    allowedHosts: ['rrniq3d7wg.fy.takin.cc'],
     proxy: devProxy
   },
   preview: {

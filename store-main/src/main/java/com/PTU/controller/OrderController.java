@@ -1,6 +1,7 @@
 package com.PTU.controller;
 
 import com.PTU.dto.OrdersSubmitDTO;
+import com.PTU.dto.SpecialOfferSubmitDTO;
 import com.PTU.dto.SecondHandOrderSubmitDTO;
 import com.PTU.result.Result;
 import com.PTU.service.OrderService;
@@ -36,6 +37,13 @@ public class OrderController {
     public Result<OrderSubmitVO> submitSecondHand(@RequestBody SecondHandOrderSubmitDTO dto) {
         log.info("二手书订单：{}", dto);
         return Result.success(orderService.submitSecondHandOrder(dto));
+    }
+
+    @PostMapping("/submitSpecialOffer")
+    @ApiOperation("特惠专区下单（专区内下单方可享受优惠）")
+    public Result<OrderSubmitVO> submitSpecialOffer(@RequestBody SpecialOfferSubmitDTO dto) {
+        log.info("特惠订单：{}", dto);
+        return Result.success(orderService.submitSpecialOfferOrder(dto));
     }
     @GetMapping("/page")
     @ApiOperation("个人订单分页查询")

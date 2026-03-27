@@ -12,6 +12,7 @@ import SecondHand from '../pages/SecondHand.vue'
 import SecondHandConfig from '../pages/SecondHandConfig.vue'
 import SystemNotice from '../pages/SystemNotice.vue'
 import CarouselConfig from '../pages/CarouselConfig.vue'
+import SpecialOfferConfig from '../pages/SpecialOfferConfig.vue'
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -37,6 +38,7 @@ const router = createRouter({
         { path: 'second-hand', component: SecondHand },
         { path: 'second-hand-config', component: SecondHandConfig },
         { path: 'carousel', component: CarouselConfig },
+        { path: 'special-offer', component: SpecialOfferConfig },
         { path: 'system-notice', component: SystemNotice },
         { path: 'profile', component: Profile }
       ]

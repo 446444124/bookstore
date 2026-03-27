@@ -3,6 +3,7 @@ package com.PTU.service.impl;
 import com.PTU.constant.MessageConstant;
 import com.PTU.context.BaseContext;
 import com.PTU.dto.OrdersSubmitDTO;
+import com.PTU.dto.SpecialOfferSubmitDTO;
 import com.PTU.dto.SecondHandOrderSubmitDTO;
 import com.PTU.entity.*;
 import com.PTU.exception.AddressBookBusinessException;
@@ -62,6 +63,10 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
     private SecondHandListingMapper secondHandListingMapper;
     @Autowired
     private SecondHandOrderMapper secondHandOrderMapper;
+    @Autowired
+    private SpecialOfferMapper specialOfferMapper;
+    @Autowired
+    private SpecialOfferItemMapper specialOfferItemMapper;
 
     private static final int SECOND_HAND_MERGE_CAP = 5000;
 
@@ -248,6 +253,126 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
                 .orderTime(sh.getOrderTime())
                 .orderAmount(sh.getTotalAmount())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public OrderSubmitVO submitSpecialOfferOrder(SpecialOfferSubmitDTO dto) {
+        Long userId = BaseContext.getCurrentId();
+        if (userId == null) throw new BaseException(MessageConstant.LOGIN_FAILED);
+        if (dto == null || dto.getOfferId() == null) throw new BaseException("缺少特惠活动");
+        int count = dto.getCount() == null ? 1 : dto.getCount();
+        if (count < 1) throw new BaseException("购买数量必须 >= 1");
+        if (dto.getPayWay() != 1 && dto.getPayWay() != 2) throw new BaseException("不支持的支付方式");
+
+        SpecialOffer offer = specialOfferMapper.selectById(dto.getOfferId());
+        if (offer == null) throw new BaseException("特惠活动不存在");
+        if (offer.getEnabled() == null || offer.getEnabled() != 1) throw new BaseException("特惠活动未启用");
+        LocalDateTime now = LocalDateTime.now();
+        if (offer.getStartTime() != null && offer.getStartTime().isAfter(now)) throw new BaseException("特惠活动未开始");
+        if (offer.getEndTime() != null && offer.getEndTime().isBefore(now)) throw new BaseException("特惠活动已结束");
+
+        boolean isDelivery = dto.getDeliveryWay() != null && dto.getDeliveryWay() == 1;
+        Orders orders = new Orders();
+        if (isDelivery) {
+            AddressBook addressBook = addressBookmapper.selectById(dto.getAddressBookId());
+            if (addressBook == null) throw new AddressBookBusinessException(MessageConstant.ADDRESS_BOOK_IS_NULL);
+            orders.setPhone(addressBook.getPhone());
+            orders.setConsignee(addressBook.getConsignee());
+            orders.setAddress(buildAddress(addressBook));
+        }
+
+        List<SpecialOfferItem> items = specialOfferItemMapper.selectList(
+                new LambdaQueryWrapper<SpecialOfferItem>().eq(SpecialOfferItem::getOfferId, offer.getId())
+        );
+        if (items == null || items.isEmpty()) throw new BaseException("特惠活动未配置图书");
+
+        List<OrderDetail> orderDetailList = new ArrayList<>();
+        BigDecimal originalAmount = BigDecimal.ZERO;
+        for (SpecialOfferItem it : items) {
+            int baseQty = it.getQuantity() == null ? 1 : it.getQuantity();
+            int qty = offer.getOfferType() != null && offer.getOfferType() == 1 ? count : baseQty * count;
+            Book book = bookMapper.selectById(it.getBookId());
+            if (book == null || book.getStatus() == null || book.getStatus() != 1) {
+                throw new BaseException(MessageConstant.BOOK_OFF_SALE_OR_DELETED);
+            }
+            int affected = bookMapper.deductStock(book.getId(), qty);
+            if (affected == 0) throw new StockNotEnoughException(MessageConstant.STOCK_NOT_ENOUGH);
+            BigDecimal line = book.getPrice().multiply(BigDecimal.valueOf(qty));
+            originalAmount = originalAmount.add(line);
+            orderDetailList.add(OrderDetail.builder()
+                    .title(book.getTitle())
+                    .bookId(book.getId())
+                    .quantity(qty)
+                    .price(line)
+                    .coverImage(book.getCoverImage())
+                    .createTime(now)
+                    .build());
+        }
+        BigDecimal dealAmount = applyOfferDiscount(originalAmount, offer.getDiscountType(), offer.getDiscountValue());
+        BigDecimal discountAmount = originalAmount.subtract(dealAmount);
+        if (discountAmount.compareTo(BigDecimal.ZERO) < 0) discountAmount = BigDecimal.ZERO;
+
+        BeanUtils.copyProperties(dto, orders);
+        orders.setId(generateOrderNo(userId));
+        orders.setUserId(userId);
+        orders.setOrderTime(now);
+        orders.setCreateTime(now);
+        orders.setUpdateTime(now);
+        orders.setTotalAmount(dealAmount);
+        orders.setSpecialOfferId(offer.getId());
+        orders.setDiscountAmount(discountAmount);
+        String remark = dto.getRemark() == null ? "" : dto.getRemark().trim();
+        String prefix = "【特惠专区】" + (offer.getName() == null ? "" : offer.getName().trim());
+        orders.setRemark(remark.isEmpty() ? prefix : (prefix + "；" + remark));
+
+        boolean walletPay = dto.getPayWay() == 2;
+        if (walletPay) {
+            int deducted = userMapper.deductWalletBalance(userId, dealAmount);
+            if (deducted == 0) throw new BaseException(MessageConstant.WALLET_BALANCE_NOT_ENOUGH);
+            orders.setPayStatus(Orders.PAID);
+            orders.setStatus(Orders.TO_BE_CONFIRMED);
+            orders.setPayTime(now);
+            walletFlowMapper.insert(WalletFlow.builder()
+                    .userId(userId)
+                    .flowType(WalletFlow.TYPE_CONSUME)
+                    .amount(dealAmount)
+                    .bizNo(orders.getId())
+                    .remark("钱包支付特惠订单")
+                    .createTime(now)
+                    .build());
+        } else {
+            orders.setPayStatus(Orders.UN_PAID);
+            orders.setStatus(Orders.PENDING_PAYMENT);
+        }
+
+        orderMapper.insert(orders);
+        for (OrderDetail od : orderDetailList) {
+            od.setOrderId(orders.getId());
+        }
+        orderDetailMapper.insertBatch(orderDetailList);
+        return OrderSubmitVO.builder()
+                .id(orders.getId())
+                .orderNumber(orders.getId())
+                .orderTime(orders.getOrderTime())
+                .orderAmount(orders.getTotalAmount())
+                .build();
+    }
+
+    private BigDecimal applyOfferDiscount(BigDecimal original, Integer discountType, BigDecimal discountValue) {
+        if (original == null) original = BigDecimal.ZERO;
+        if (discountType == null || discountValue == null) return original;
+        if (discountType == 1) {
+            return original.multiply(discountValue).divide(new BigDecimal("100"), 2, BigDecimal.ROUND_HALF_UP);
+        }
+        if (discountType == 2) {
+            return discountValue.setScale(2, BigDecimal.ROUND_HALF_UP);
+        }
+        if (discountType == 3) {
+            BigDecimal v = original.subtract(discountValue);
+            return v.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : v.setScale(2, BigDecimal.ROUND_HALF_UP);
+        }
+        return original;
     }
 
     private String generateOrderNo(Long userId) {

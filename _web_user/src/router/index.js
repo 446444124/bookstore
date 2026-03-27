@@ -11,6 +11,7 @@ import Orders from '../pages/Orders.vue'
 import SecondHandBrowse from '../pages/SecondHandBrowse.vue'
 import SecondHandDetail from '../pages/SecondHandDetail.vue'
 import SecondHandSell from '../pages/SecondHandSell.vue'
+import SpecialOffer from '../pages/SpecialOffer.vue'
 
 const routes = [
   { path: '/', component: Home },
@@ -24,7 +25,8 @@ const routes = [
   { path: '/orders', component: Orders },
   { path: '/second-hand', component: SecondHandBrowse },
   { path: '/second-hand/sell', component: SecondHandSell },
-  { path: '/second-hand/:id', component: SecondHandDetail }
+  { path: '/second-hand/:id', component: SecondHandDetail },
+  { path: '/special-offer', component: SpecialOffer }
 ]
 
 const router = createRouter({

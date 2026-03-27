@@ -5,10 +5,23 @@ export const cartCount = ref(0)
 export const refreshCartCount = async () => {
   try {
     const token = localStorage.getItem('token') || ''
+    if (!token) {
+      cartCount.value = 0
+      return
+    }
     const resp = await fetch('/user/cart/list', {
       method: 'GET',
       headers: token ? { authentication: token } : {}
     })
+    if (resp.status === 401) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('userId')
+      localStorage.removeItem('userRealName')
+      localStorage.removeItem('userUsername')
+      localStorage.removeItem('userAvatar')
+      cartCount.value = 0
+      return
+    }
     const ct = resp.headers.get('content-type') || ''
     let data = {}
     if (ct.includes('application/json')) {

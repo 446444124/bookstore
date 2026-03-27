@@ -36,6 +36,7 @@ public class JwtTokenUserInterceptor implements HandlerInterceptor {
             "/user/category/page",
             "/user/major/page",
             "/user/home/recommend",
+            "/user/home/banners",
             "/user/secondHand/onSale",
             "/user/secondHand/detail/**"
     };

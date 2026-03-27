@@ -14,6 +14,7 @@
         </el-menu-item>
         <el-menu-item index="/admin/second-hand-config">二手书回收配置</el-menu-item>
         <el-menu-item index="/admin/carousel">轮播图配置</el-menu-item>
+        <el-menu-item index="/admin/special-offer">特惠图书配置</el-menu-item>
         <el-menu-item index="/admin/system-notice">系统公告</el-menu-item>
         <el-menu-item index="/admin/orders">订单管理</el-menu-item>
         <el-menu-item index="/admin/orders/pending-confirm">

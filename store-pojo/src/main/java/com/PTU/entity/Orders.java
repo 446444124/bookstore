@@ -193,4 +193,16 @@ public class Orders implements Serializable {
      */
     @TableField("second_hand_listing_id")
     private Long secondHandListingId;
+
+    /**
+     * 关联特惠活动（仅特惠专区下单写入）
+     */
+    @TableField("special_offer_id")
+    private Long specialOfferId;
+
+    /**
+     * 优惠金额（仅特惠专区下单写入）
+     */
+    @TableField("discount_amount")
+    private BigDecimal discountAmount;
 }

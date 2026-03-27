@@ -27,6 +27,8 @@ const goCart = () => {
   router.push('/cart')
 }
 onMounted(() => {
+  const tk = localStorage.getItem('token') || ''
+  if (!tk) return
   refreshCartCount()
 })
 </script>

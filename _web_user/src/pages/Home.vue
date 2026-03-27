@@ -1,7 +1,7 @@
 <template>
   <div class="home">
     <section class="hero">
-      <el-carousel height="360px" indicator-position="outside">
+      <el-carousel class="hero-carousel" indicator-position="outside">
         <el-carousel-item v-for="(b, i) in banners" :key="b?.id ?? i">
           <img
             :src="b?.imageUrl"
@@ -23,6 +23,18 @@
         <div class="sh-banner-actions">
           <el-button type="warning" size="large" round class="sh-btn-main" @click="onSecondHandClick">进入二手书专区</el-button>
           <el-button size="large" round class="sh-btn-sub" @click="onSecondHandSellClick">我要卖书</el-button>
+        </div>
+      </div>
+    </section>
+    <section class="special-offer-banner" aria-label="特惠专区入口">
+      <div class="so-inner">
+        <div class="so-text">
+          <div class="so-kicker">限时特惠 · 仅专区下单生效</div>
+          <div class="so-title">特惠专区</div>
+          <div class="so-desc">单本优惠、组合套餐优惠都在这里，下单自动按特惠价结算。</div>
+        </div>
+        <div class="so-actions">
+          <el-button type="primary" size="large" round @click="onSpecialOfferClick">进入特惠专区</el-button>
         </div>
       </div>
     </section>
@@ -116,10 +128,19 @@ const shouldShowNotice = (n) => {
 const loadNotice = async () => {
   try {
     const token = localStorage.getItem('token') || ''
+    if (!token) return
     const resp = await fetch('/user/systemNotice/active', {
       method: 'GET',
       headers: token ? { authentication: token } : {}
     })
+    if (resp.status === 401) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('userId')
+      localStorage.removeItem('userRealName')
+      localStorage.removeItem('userUsername')
+      localStorage.removeItem('userAvatar')
+      return
+    }
     const ct = resp.headers.get('content-type') || ''
     let data = {}
     if (ct.includes('application/json')) {
@@ -301,6 +322,9 @@ const onSecondHandSellClick = () => {
   }
   router.push('/second-hand/sell')
 }
+const onSpecialOfferClick = () => {
+  router.push('/special-offer')
+}
 const onAddToCart = (b) => {
   if (needLogin()) {
     ElMessage.warning('请先登录')
@@ -367,11 +391,24 @@ const onBannerClick = (b) => {
   margin: 0 auto;
   padding: 8px 4px 20px;
 }
+.hero-carousel :deep(.el-carousel__container) {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  max-height: 360px;
+  min-height: 200px;
+}
+.hero-carousel :deep(.el-carousel__item) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .banner-image {
   width: 100%;
-  height: 360px;
-  object-fit: cover;
+  height: 100%;
+  object-fit: contain;
   border-radius: var(--radius);
+  background: #f1f5f9;
 }
 .banner-image.clickable {
   cursor: pointer;
@@ -384,6 +421,26 @@ const onBannerClick = (b) => {
   background: linear-gradient(120deg, color-mix(in srgb, var(--el-color-warning-light-9) 85%, #fff) 0%, var(--surface) 55%, color-mix(in srgb, var(--el-color-warning-light-9) 70%, #fff) 100%);
   box-shadow: var(--shadow-sm);
 }
+.special-offer-banner {
+  margin-top: 16px;
+  padding: 18px 22px;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--border));
+  background: linear-gradient(120deg, color-mix(in srgb, var(--primary-weak) 70%, #fff) 0%, var(--surface) 60%, color-mix(in srgb, var(--primary-weak) 55%, #fff) 100%);
+  box-shadow: var(--shadow-sm);
+}
+.so-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.so-text { flex: 1 1 280px; min-width: 0; }
+.so-kicker { font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--primary); margin-bottom: 6px; }
+.so-title { font-family: var(--font-heading); font-size: 24px; font-weight: 900; color: var(--text-main); margin-bottom: 6px; }
+.so-desc { color: var(--text-sub); font-size: 14px; line-height: 1.55; max-width: 560px; }
+.so-actions { flex-shrink: 0; }
 .sh-banner-inner {
   display: flex;
   align-items: center;

@@ -49,6 +49,7 @@ public class WebMvcConfiguration extends WebMvcConfigurationSupport {
                 .excludePathPatterns("/user/category/page")
                 .excludePathPatterns("/user/major/page")
                 .excludePathPatterns("/user/home/recommend")
+                .excludePathPatterns("/user/home/banners")
                 .excludePathPatterns("/user/secondHand/onSale")
                 .excludePathPatterns("/user/secondHand/detail/**");
     }
