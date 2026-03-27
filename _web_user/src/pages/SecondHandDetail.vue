@@ -60,10 +60,26 @@
           <el-date-picker v-model="orderForm.estimatedDeliveryTime" type="datetime" placeholder="选择日期时间" value-format="YYYY-MM-DD HH:mm:ss" />
         </el-form-item>
         <el-form-item label="付款方式" prop="payWay">
-          <el-select v-model="orderForm.payWay" placeholder="请选择付款方式">
-            <el-option :value="1" label="支付宝" />
-            <el-option :value="2" :label="`钱包支付（余额 ¥${toMoney(walletBalance)}）`" />
-          </el-select>
+          <el-radio-group v-model="orderForm.payWay" class="pay-way-group">
+            <el-radio :label="2" border class="pay-way-option">
+              <span class="pay-way-inner">
+                <img class="pay-way-ic" src="/wallet.svg" alt="wallet" />
+                <span class="pay-way-text">
+                  <span class="pay-way-title">钱包支付</span>
+                  <span class="pay-way-sub">余额 ¥{{ toMoney(walletBalance) }}</span>
+                </span>
+              </span>
+            </el-radio>
+            <el-radio :label="1" border class="pay-way-option">
+              <span class="pay-way-inner">
+                <img class="pay-way-ic" src="/alipay.svg" alt="alipay" />
+                <span class="pay-way-text">
+                  <span class="pay-way-title">支付宝</span>
+                  <span class="pay-way-sub">推荐</span>
+                </span>
+              </span>
+            </el-radio>
+          </el-radio-group>
         </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="orderForm.remark" type="textarea" />
@@ -395,5 +411,53 @@ onMounted(loadDetail)
 .addr-select {
   flex: 1;
   min-width: 200px;
+}
+
+.pay-way-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+.pay-way-option {
+  margin: 0 !important;
+  width: 100%;
+  height: auto !important;
+  padding: 10px 12px !important;
+  border-radius: 10px !important;
+  border-color: #e5e7eb !important;
+}
+.pay-way-option.is-checked {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12);
+}
+.pay-way-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pay-way-ic {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+}
+.pay-way-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+.pay-way-title {
+  font-weight: 600;
+  color: #111827;
+}
+.pay-way-sub {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+@media (max-width: 520px) {
+  .pay-way-group {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

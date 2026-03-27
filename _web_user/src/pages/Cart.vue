@@ -14,8 +14,8 @@
         </template>
       </el-table-column>
       <el-table-column prop="title" label="书名" min-width="200" />
-      <el-table-column prop="price" label="单价" width="120">
-        <template #default="{ row }">¥ {{ toMoney(row.price) }}</template>
+      <el-table-column prop="unitPrice" label="单价" width="120">
+        <template #default="{ row }">¥ {{ toMoney(row.unitPrice) }}</template>
       </el-table-column>
       <el-table-column prop="num" label="数量" width="160">
         <template #default="{ row }">
@@ -27,7 +27,7 @@
         </template>
       </el-table-column>
       <el-table-column label="小计" width="140">
-        <template #default="{ row }">¥ {{ toMoney((Number(row.price) || 0) * (Number(row.num) || 0)) }}</template>
+        <template #default="{ row }">¥ {{ toMoney(row.lineAmount) }}</template>
       </el-table-column>
       <el-table-column label="操作" width="120">
         <template #default="{ row }">
@@ -151,14 +151,20 @@ const loadCart = async () => {
     if (resp.ok) {
       const d = data?.data ?? data
       const rows = Array.isArray(d) ? d : d?.records || d?.list || d?.items || d?.rows || d?.data || []
-      items.value = (rows || []).map(r => ({
+      items.value = (rows || []).map(r => {
+        const num = Number(r?.quantity ?? r?.num ?? 1) || 1
+        const lineAmount = Number(r?.amount ?? 0) || 0
+        const unitPrice = Number(r?.price ?? 0) || (num > 0 ? lineAmount / num : 0)
+        return {
         id: r?.id,
         bookId: r?.bookId,
         title: r?.title,
         coverImage: r?.coverImage,
-        price: Number(r?.amount ?? r?.price ?? 0) || 0,
-        num: Number(r?.quantity ?? r?.num ?? 1) || 1
-      }))
+        unitPrice,
+        lineAmount,
+        num
+      }
+      })
     } else {
       items.value = []
     }
@@ -187,10 +193,7 @@ const onClean = async () => {
 const goBrowse = () => router.push('/browse')
 const totalCount = computed(() => items.value.reduce((sum, it) => sum + (Number(it.num) || 0), 0))
 const totalAmount = computed(() =>
-  items.value.reduce(
-    (sum, it) => sum + ((Number(it.amount ?? it.price) || 0) * (Number(it.num) || 0)),
-    0
-  )
+  items.value.reduce((sum, it) => sum + (Number(it.lineAmount) || 0), 0)
 )
 const onQtyChange = async (row, delta) => {
   if (!row || row.bookId == null) return
