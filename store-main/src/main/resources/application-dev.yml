@@ -38,6 +38,17 @@ store:
     # 与 application.yml 中默认一致：专用逻辑库 15（勿与其它项目共用）
     database: 15
 
+  ai:
+    # 计费说明：各平台多为「新用户赠送额度 + 超出后按量计费」，无永久全免费商用 API；价目以控制台为准。
+    # · 阿里百炼/通义千问（默认，OpenAI 兼容）: https://bailian.console.aliyun.com → API Key → 环境变量 DASHSCOPE_API_KEY
+    #   chat-url 默认 https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions ，model 如 qwen-turbo、qwen-plus
+    # · 硅基流动: https://cloud.siliconflow.cn → SILICONFLOW_API_KEY；需改 chat-url 为 api.siliconflow.cn 及对应 model
+    # · DeepSeek / 智谱: 见 BookstoreAiProperties 注释
+    enabled: true
+    api-key: ${DASHSCOPE_API_KEY:${SILICONFLOW_API_KEY:${STORE_AI_API_KEY:}}}
+    chat-url: ${STORE_AI_CHAT_URL:https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions}
+    model: ${STORE_AI_MODEL:qwen-turbo}
+
   mail:
     # false：走真实 SMTP（需 spring.mail + 下方 from）；本地调试可临时改回 true 只看日志验证码
     mock: false

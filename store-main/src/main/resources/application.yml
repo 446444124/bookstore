@@ -90,6 +90,13 @@ store:
     access-key-secret: ${store.alioss.access-key-secret}
     bucket-name: ${store.alioss.bucket-name}
 
+  ai:
+    # OpenAI 兼容接口：默认阿里百炼通义千问；亦可硅基/DeepSeek/智谱，见 application-dev.yml
+    enabled: false
+    api-key: ${DASHSCOPE_API_KEY:${SILICONFLOW_API_KEY:${STORE_AI_API_KEY:}}}
+    chat-url: https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
+    model: qwen-turbo
+
   mail:
     # 开发环境可在 application-dev.yml 中改为 true，验证码仅打印在服务端日志
     mock: false

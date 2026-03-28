@@ -41,7 +41,8 @@ public class JwtTokenUserInterceptor implements HandlerInterceptor {
             "/user/home/recommend",
             "/user/home/banners",
             "/user/secondHand/onSale",
-            "/user/secondHand/detail/**"
+            "/user/secondHand/detail/**",
+            "/user/ai/**"
     };
 
     private final UrlPathHelper urlPathHelper = new UrlPathHelper();

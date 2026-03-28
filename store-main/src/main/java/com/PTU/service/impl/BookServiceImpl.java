@@ -13,6 +13,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.Collections;
+import java.util.List;
+
 
 @Service
 @Slf4j
@@ -46,6 +49,43 @@ public class BookServiceImpl  extends ServiceImpl<BookMapper, Book> implements B
 
         // 构建返回结果
         return new PageResult(page.getTotal(), page.getRecords());
+    }
+
+    @Override
+    public long countOnSale() {
+        return this.count(new LambdaQueryWrapper<Book>().eq(Book::getStatus, StatusConstant.ENABLE));
+    }
+
+    @Override
+    public List<Book> listCheapestOnSale(int limit) {
+        int n = Math.min(Math.max(limit, 1), 200);
+        LambdaQueryWrapper<Book> q = new LambdaQueryWrapper<>();
+        q.eq(Book::getStatus, StatusConstant.ENABLE)
+                .last("ORDER BY (price IS NULL), price ASC LIMIT " + n);
+        return list(q);
+    }
+
+    @Override
+    public List<Book> listPriciestOnSale(int limit) {
+        int n = Math.min(Math.max(limit, 1), 200);
+        LambdaQueryWrapper<Book> q = new LambdaQueryWrapper<>();
+        q.eq(Book::getStatus, StatusConstant.ENABLE)
+                .last("ORDER BY (price IS NULL), price DESC LIMIT " + n);
+        return list(q);
+    }
+
+    @Override
+    public List<Book> searchOnSaleByKeyword(String keyword, int limit) {
+        if (!StringUtils.hasText(keyword)) {
+            return Collections.emptyList();
+        }
+        int n = Math.min(Math.max(limit, 1), 200);
+        String t = keyword.trim();
+        LambdaQueryWrapper<Book> q = new LambdaQueryWrapper<>();
+        q.eq(Book::getStatus, StatusConstant.ENABLE)
+                .and(w -> w.like(Book::getTitle, t).or().like(Book::getAuthor, t).or().like(Book::getIsbn, t))
+                .last("LIMIT " + n);
+        return list(q);
     }
 
 }

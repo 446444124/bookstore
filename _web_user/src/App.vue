@@ -21,6 +21,7 @@
       <router-view />
     </main>
     <footer class="footer">© {{ year }} 莆田学院校园书店</footer>
+    <AiAssistantFab />
   </div>
 </template>
 
@@ -28,6 +29,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import AiAssistantFab from './components/AiAssistantFab.vue'
 const router = useRouter()
 const year = new Date().getFullYear()
 const badgeSrc = ref('/ptu-badge.png')
