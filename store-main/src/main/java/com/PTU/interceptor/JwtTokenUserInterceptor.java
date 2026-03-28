@@ -30,6 +30,9 @@ public class JwtTokenUserInterceptor implements HandlerInterceptor {
     private static final String[] PUBLIC_PATH_PATTERNS = {
             "/user/user/login",
             "/user/user/register",
+            "/user/user/register/send-email-code",
+            "/user/user/password/forgot/send-code",
+            "/user/user/password/forgot/reset",
             "/user/user/logout",
             "/user/shop/status",
             "/user/book/**",

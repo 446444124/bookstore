@@ -4,13 +4,20 @@ import com.PTU.constant.JwtClaimsConstant;
 import com.PTU.constant.MessageConstant;
 import com.PTU.context.BaseContext;
 import com.PTU.dto.UserDTO;
+import com.PTU.dto.UserChangePasswordDTO;
+import com.PTU.dto.UserForgotPasswordResetDTO;
+import com.PTU.dto.UserForgotPasswordSendCodeDTO;
 import com.PTU.dto.UserLoginDTO;
+import com.PTU.dto.UserRegisterSendEmailCodeDTO;
 import com.PTU.entity.User;
 import com.PTU.entity.WalletFlow;
 import com.PTU.mapper.WalletFlowMapper;
 import com.PTU.properties.JwtProperties;
 import com.PTU.result.PageResult;
 import com.PTU.result.Result;
+import com.PTU.service.ForgotPasswordService;
+import com.PTU.service.RegisterEmailCodeService;
+import com.PTU.service.UserPasswordChangeService;
 import com.PTU.service.UserService;
 import com.PTU.utils.PayUtil;
 import com.PTU.utils.JwtUtil;
@@ -38,6 +45,12 @@ import java.time.LocalDateTime;
 public class UserController {
     @Autowired
     private UserService userService;
+    @Autowired
+    private ForgotPasswordService forgotPasswordService;
+    @Autowired
+    private RegisterEmailCodeService registerEmailCodeService;
+    @Autowired
+    private UserPasswordChangeService userPasswordChangeService;
     @Autowired
     private JwtProperties jwtProperties;
     @Autowired
@@ -77,6 +90,31 @@ public class UserController {
         //注册
         return userService.register(tuser);
     }
+
+    @PostMapping("/register/send-email-code")
+    @ApiOperation("注册：发送邮箱验证码")
+    public Result sendRegisterEmailCode(@RequestBody UserRegisterSendEmailCodeDTO dto) {
+        return registerEmailCodeService.sendRegisterEmailCode(dto);
+    }
+
+    @PostMapping("/password/forgot/send-code")
+    @ApiOperation("忘记密码：发送邮箱验证码")
+    public Result sendForgotPasswordCode(@RequestBody UserForgotPasswordSendCodeDTO dto) {
+        return forgotPasswordService.sendResetCode(dto);
+    }
+
+    @PostMapping("/password/forgot/reset")
+    @ApiOperation("忘记密码：验证码重置密码")
+    public Result<Void> resetPasswordByEmail(@RequestBody UserForgotPasswordResetDTO dto) {
+        return forgotPasswordService.resetPasswordByEmail(dto);
+    }
+
+    @PostMapping("/password/change")
+    @ApiOperation("登录用户修改密码")
+    public Result changePassword(@RequestBody UserChangePasswordDTO dto) {
+        return userPasswordChangeService.changePassword(BaseContext.getCurrentId(), dto);
+    }
+
     @GetMapping("/{id}")
     @ApiOperation("根据id查询用户")
     public Result<User> getById(@PathVariable Long id){

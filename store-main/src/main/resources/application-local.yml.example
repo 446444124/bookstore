@@ -1,0 +1,9 @@
+# 复制为 application-local.yml 后填写（application-local.yml 已被 git 忽略）
+spring:
+  mail:
+    username: your@qq.com
+    password: smtp-authorization-code
+
+store:
+  mail:
+    from: your@qq.com

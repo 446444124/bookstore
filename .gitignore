@@ -1,4 +1,6 @@
 HELP.md
+# 本地敏感配置（邮箱 SMTP 等），勿提交
+**/application-local.yml
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/

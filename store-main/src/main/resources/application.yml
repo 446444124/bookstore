@@ -4,6 +4,11 @@ server:
 spring:
   profiles:
     active: dev
+    # 激活 dev 时同时激活 local，从而加载 application-local.yml（邮箱等敏感项，勿提交）
+    group:
+      dev:
+        - dev
+        - local
   main:
     allow-circular-references: true
   mvc:
@@ -32,9 +37,9 @@ spring:
       remove-abandoned: true
       remove-abandoned-timeout: 1800
   redis:
-    host: ${store.redis.host}
-    port: ${store.redis.port}
-    database: ${store.redis.database}
+    host: ${store.redis.host:127.0.0.1}
+    port: ${store.redis.port:6379}
+    database: ${store.redis.database:15}
   # 设置单个文件最大大小为10MB
   servlet:
     multipart:
@@ -61,6 +66,12 @@ logging:
         controller: info
 
 store:
+  redis:
+    # 逻辑库 0–15；默认 15 专用于本项目，避免与其它使用 db0 的应用混用键空间
+    host: 127.0.0.1
+    port: 6379
+    database: 15
+
   jwt:
     # 设置jwt签名加密时使用的秘钥
     admin-secret-key: itcast
@@ -78,6 +89,12 @@ store:
     access-key-id: ${store.alioss.access-key-id}
     access-key-secret: ${store.alioss.access-key-secret}
     bucket-name: ${store.alioss.bucket-name}
+
+  mail:
+    # 开发环境可在 application-dev.yml 中改为 true，验证码仅打印在服务端日志
+    mock: false
+    # 真实发信时需配置 spring.mail.*，且与 SMTP 要求一致
+    from: ""
 
   alipay:
     appid: ${store.alipay.appid}

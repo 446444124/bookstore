@@ -10,19 +10,29 @@ import com.PTU.exception.AccountNotFoundException;
 import com.PTU.exception.PasswordErrorException;
 import com.PTU.mapper.UserMapper;
 import com.PTU.result.Result;
+import com.PTU.service.RegisterEmailCodeService;
 import com.PTU.service.UserService;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.util.regex.Pattern;
 
 @Service
 @Slf4j
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
+
+    private static final Pattern REGISTER_EMAIL_PATTERN =
+            Pattern.compile("^[\\w+.-]+@[\\w.-]+\\.[a-zA-Z]{2,}$");
+
+    @Autowired
+    private RegisterEmailCodeService registerEmailCodeService;
 
     @Override
     public User login(UserLoginDTO userLoginDTO) {
@@ -88,6 +98,20 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             //手机号已存在
 //            throw new AccountNotFoundException(MessageConstant.PHONE_EXIST);
             return Result.error(MessageConstant.PHONE_EXIST);
+        }
+        String emailRaw = tuser.getEmail();
+        if (!StringUtils.hasText(emailRaw) || !REGISTER_EMAIL_PATTERN.matcher(emailRaw.trim()).matches()) {
+            return Result.error("邮箱格式不正确");
+        }
+        queryWrapper = new QueryWrapper<>();
+        queryWrapper.apply("LOWER(TRIM(email)) = {0}", emailRaw.trim().toLowerCase());
+        user = this.getOne(queryWrapper);
+        if (user != null) {
+            return Result.error(MessageConstant.EMAIL_EXIST);
+        }
+        String codeErr = registerEmailCodeService.verifyAndConsumeRegisterEmailCode(emailRaw, tuser.getEmailCode());
+        if (codeErr != null) {
+            return Result.error(codeErr);
         }
         //3.密码 加密存储
         tuser.setPassword(DigestUtils.md5DigestAsHex(tuser.getPassword().getBytes()));

@@ -1,3 +1,22 @@
+# 真实发信：application-local.yml（gitignore）在 profile「local」下加载，由 application.yml 的 spring.profiles.group 在 dev 时一并激活
+# 亦可使用环境变量 MAIL_USERNAME / MAIL_PASSWORD / MAIL_FROM
+spring:
+  mail:
+    host: ${MAIL_SMTP_HOST:smtp.qq.com}
+    port: ${MAIL_SMTP_PORT:465}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+          connectiontimeout: 15000
+          timeout: 15000
+          writetimeout: 15000
+
 store:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -16,11 +35,17 @@ store:
   redis:
     host: localhost
     port: 6379
-    database: 10
+    # 与 application.yml 中默认一致：专用逻辑库 15（勿与其它项目共用）
+    database: 15
+
+  mail:
+    # false：走真实 SMTP（需 spring.mail + 下方 from）；本地调试可临时改回 true 只看日志验证码
+    mock: false
+    # 发件人，须与邮箱服务商要求一致（QQ/163 一般为完整邮箱地址）
+    from: ${MAIL_FROM:${MAIL_USERNAME:}}
 
   pay:
     success-page-url: http://localhost:5173/#/paysuccess
     wallet-recharge-success-page-url: http://localhost:5173/#/wallet-rechargesuccess
-
 
 

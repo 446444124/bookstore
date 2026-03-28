@@ -13,6 +13,8 @@ public class UserDTO {
     private String password;
     private String realName;
     private String email;
+    /** 注册时邮箱验证码（6 位数字） */
+    private String emailCode;
     private String phone;
     private int gender;
     private Long majorId;

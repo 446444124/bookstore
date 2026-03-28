@@ -1,0 +1,15 @@
+# 本地开发：一键启动 Redis（忘记密码验证码、图书相关缓存等依赖 Redis）
+# 启动：在项目根目录执行  docker compose up -d redis
+# 验证：docker compose exec redis redis-cli -n 15 ping  应返回 PONG
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: bookstore-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - bookstore-redis-data:/data
+
+volumes:
+  bookstore-redis-data:

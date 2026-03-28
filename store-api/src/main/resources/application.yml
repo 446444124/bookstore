@@ -32,9 +32,9 @@ spring:
       remove-abandoned: true
       remove-abandoned-timeout: 1800
   redis:
-    host: ${store.redis.host}
-    port: ${store.redis.port}
-    database: ${store.redis.database}
+    host: ${store.redis.host:127.0.0.1}
+    port: ${store.redis.port:6379}
+    database: ${store.redis.database:15}
   # 设置单个文件最大大小为10MB
   servlet:
     multipart:
@@ -60,6 +60,11 @@ logging:
         controller: info
 
 store:
+  redis:
+    host: 127.0.0.1
+    port: 6379
+    database: 15
+
   jwt:
     # 设置jwt签名加密时使用的秘钥
     admin-secret-key: itcast

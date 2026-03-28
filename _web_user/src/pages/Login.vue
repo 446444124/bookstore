@@ -20,6 +20,9 @@
         <el-form-item label="密码" prop="password">
           <el-input v-model="form.password" type="password" placeholder="请输入密码" show-password />
         </el-form-item>
+        <div class="forgot-link">
+          <el-button link type="primary" @click="router.push('/forgot-password')">忘记密码？</el-button>
+        </div>
         <div class="ops">
           <el-button type="primary" :loading="loading" @click="onSubmit">登录</el-button>
           <el-button type="success" @click="regVisible = true">注册</el-button>
@@ -52,6 +55,14 @@
         <el-form-item label="邮箱" prop="email">
           <el-input v-model="regForm.email" placeholder="请输入邮箱" />
         </el-form-item>
+        <el-form-item label="邮箱验证码" prop="emailCode">
+          <div class="reg-code-row">
+            <el-input v-model="regForm.emailCode" placeholder="6位数字" maxlength="6" clearable />
+            <el-button :disabled="regSendCooldown > 0" :loading="regSendLoading" @click="onSendRegisterEmailCode">
+              {{ regSendCooldown > 0 ? `${regSendCooldown}s` : '获取验证码' }}
+            </el-button>
+          </div>
+        </el-form-item>
         <el-form-item label="手机号" prop="phone">
           <el-input v-model="regForm.phone" placeholder="请输入手机号" type="tel" maxlength="11" />
         </el-form-item>
@@ -73,7 +84,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
@@ -166,7 +177,18 @@ onMounted(() => {
 const regVisible = ref(false)
 const regFormRef = ref()
 const majors = ref([])
-const regForm = ref({ studentId: '', password: '', confirmPassword: '', majorId: '', realName: '', username: '', email: '', phone: '', gender: 1 })
+const regForm = ref({
+  studentId: '',
+  password: '',
+  confirmPassword: '',
+  majorId: '',
+  realName: '',
+  username: '',
+  email: '',
+  emailCode: '',
+  phone: '',
+  gender: 1
+})
 const regRules = {
   studentId: [
     { required: true, message: '请输入学号', trigger: 'blur' },
@@ -186,7 +208,18 @@ const regRules = {
   majorId: [{ required: true, message: '请选择专业', trigger: 'change' }],
   realName: [{ required: true, message: '请输入姓名' }],
   username: [{ required: true, message: '请输入昵称' }],
-  email: [{ required: true, message: '请输入邮箱' }],
+  email: [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    {
+      pattern: /^[\w+.-]+@[\w.-]+\.[a-zA-Z]{2,}$/,
+      message: '邮箱格式不正确',
+      trigger: 'blur'
+    }
+  ],
+  emailCode: [
+    { required: true, message: '请输入邮箱验证码', trigger: 'blur' },
+    { pattern: /^\d{6}$/, message: '验证码为6位数字', trigger: 'blur' }
+  ],
   phone: [
     { required: true, message: '请输入手机号' },
     { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号' }
@@ -194,6 +227,66 @@ const regRules = {
   gender: [{ required: true, message: '请选择性别' }]
 }
 const regLoading = ref(false)
+const regSendLoading = ref(false)
+const regSendCooldown = ref(0)
+let regCooldownTimer = null
+const startRegCooldown = (sec) => {
+  regSendCooldown.value = sec
+  if (regCooldownTimer) clearInterval(regCooldownTimer)
+  regCooldownTimer = setInterval(() => {
+    regSendCooldown.value -= 1
+    if (regSendCooldown.value <= 0) {
+      clearInterval(regCooldownTimer)
+      regCooldownTimer = null
+    }
+  }, 1000)
+}
+onUnmounted(() => {
+  if (regCooldownTimer) clearInterval(regCooldownTimer)
+})
+
+const onSendRegisterEmailCode = async () => {
+  if (!regFormRef.value) return
+  try {
+    await regFormRef.value.validateField(['email'])
+  } catch (_) {
+    return
+  }
+  regSendLoading.value = true
+  try {
+    const resp = await fetch('/user/user/register/send-email-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: regForm.value.email })
+    })
+    const ct = resp.headers.get('content-type') || ''
+    let data = {}
+    if (ct.includes('application/json')) {
+      try {
+        data = await resp.json()
+      } catch (_) {}
+    }
+    const code = data?.code
+    const ok = code === 1 || code === 200
+    if (ok) {
+      if (data?.data?.devMailMock === true) {
+        ElMessage.warning('当前为邮件模拟模式，请在运行后端的控制台查看「注册邮箱」日志中的验证码')
+      } else {
+        ElMessage.success('验证码已发送，请查收邮箱')
+      }
+      startRegCooldown(60)
+    } else {
+      ElMessage.error(data?.msg || '发送失败')
+      if (String(data?.msg || '').includes('频繁')) {
+        startRegCooldown(60)
+      }
+    }
+  } catch (_) {
+    ElMessage.error('网络错误')
+  } finally {
+    regSendLoading.value = false
+  }
+}
 const loadMajors = async () => {
   try {
     const token = localStorage.getItem('token') || ''
@@ -248,6 +341,7 @@ const onRegister = async () => {
         realName: regForm.value.realName,
         username: regForm.value.username,
         email: regForm.value.email,
+        emailCode: regForm.value.emailCode,
         phone: regForm.value.phone,
         gender: regForm.value.gender
       })
@@ -351,12 +445,24 @@ const onRegister = async () => {
   text-align: center;
   color: var(--text-main);
 }
+.forgot-link {
+  text-align: right;
+  margin: -4px 0 4px;
+}
 .ops {
   display: flex;
   gap: 12px;
   justify-content: center;
   flex-wrap: wrap;
   margin-top: 4px;
+}
+.reg-code-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+.reg-code-row .el-input {
+  flex: 1;
 }
 .dialog-ops {
   display: flex;

@@ -42,6 +42,9 @@ public class WebMvcConfiguration extends WebMvcConfigurationSupport {
                 .addPathPatterns("/user/**")
                 .excludePathPatterns("/user/user/login")
                 .excludePathPatterns("/user/user/register")
+                .excludePathPatterns("/user/user/register/send-email-code")
+                .excludePathPatterns("/user/user/password/forgot/send-code")
+                .excludePathPatterns("/user/user/password/forgot/reset")
                 .excludePathPatterns("/user/user/logout")
                 .excludePathPatterns("/user/shop/status")
                 // 单段通配 /user/book/* 在部分环境下对「详情 /user/book/123」排除不生效，导致未登录访问详情被 JWT 拦截为 401

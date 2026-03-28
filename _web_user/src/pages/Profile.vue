@@ -5,6 +5,7 @@
       <div class="ops">
         <el-button @click="goHome">返回首页</el-button>
         <el-button type="success" @click="openRecharge">钱包充值</el-button>
+        <el-button @click="openPwdDialog">修改密码</el-button>
         <el-button v-if="!isEditing" type="primary" @click="startEdit">编辑</el-button>
         <template v-else>
           <el-button @click="onCancel">取消</el-button>
@@ -195,6 +196,28 @@
       </div>
     </template>
   </el-dialog>
+  <el-dialog v-model="pwdDialogVisible" title="修改密码" width="440px" @closed="resetPwdForm">
+    <el-form ref="pwdFormRef" :model="pwdForm" :rules="pwdRules" label-width="100px">
+      <el-form-item label="原密码" prop="oldPassword">
+        <el-input v-model="pwdForm.oldPassword" type="password" show-password placeholder="请输入当前密码" />
+      </el-form-item>
+      <el-form-item label="新密码" prop="newPassword">
+        <el-input v-model="pwdForm.newPassword" type="password" show-password placeholder="至少6位" />
+      </el-form-item>
+      <el-form-item label="确认新密码" prop="confirmPassword">
+        <el-input v-model="pwdForm.confirmPassword" type="password" show-password placeholder="再次输入新密码" />
+      </el-form-item>
+    </el-form>
+    <div class="pwd-forgot-row">
+      <el-button link type="primary" @click="goForgotPassword">忘记密码？通过邮箱找回</el-button>
+    </div>
+    <template #footer>
+      <div class="dialog-ops">
+        <el-button @click="pwdDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="pwdSaving" @click="onPwdSubmit">确定</el-button>
+      </div>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup>
@@ -224,6 +247,83 @@ const majors = ref([])
 const walletBalance = ref(0)
 const rechargeVisible = ref(false)
 const rechargeAmount = ref(10)
+const pwdDialogVisible = ref(false)
+const pwdFormRef = ref()
+const pwdSaving = ref(false)
+const pwdForm = ref({
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+})
+const pwdRules = {
+  oldPassword: [{ required: true, message: '请输入原密码', trigger: 'blur' }],
+  newPassword: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, message: '至少6位', trigger: 'blur' }
+  ],
+  confirmPassword: [
+    { required: true, message: '请再次输入新密码', trigger: 'blur' },
+    {
+      validator: (_, v, cb) => {
+        if (v !== pwdForm.value.newPassword) cb(new Error('两次新密码不一致'))
+        else cb()
+      },
+      trigger: 'blur'
+    }
+  ]
+}
+const resetPwdForm = () => {
+  pwdForm.value = { oldPassword: '', newPassword: '', confirmPassword: '' }
+  pwdFormRef.value?.clearValidate?.()
+}
+const openPwdDialog = () => {
+  resetPwdForm()
+  pwdDialogVisible.value = true
+}
+const goForgotPassword = () => {
+  pwdDialogVisible.value = false
+  router.push('/forgot-password')
+}
+const onPwdSubmit = async () => {
+  if (!pwdFormRef.value) return
+  try {
+    await pwdFormRef.value.validate()
+  } catch (_) {
+    return
+  }
+  pwdSaving.value = true
+  try {
+    const token = localStorage.getItem('token') || ''
+    const resp = await fetch('/user/user/password/change', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { authentication: token } : {}) },
+      body: JSON.stringify({
+        oldPassword: pwdForm.value.oldPassword,
+        newPassword: pwdForm.value.newPassword
+      })
+    })
+    const ct = resp.headers.get('content-type') || ''
+    let data = {}
+    if (ct.includes('application/json')) {
+      try {
+        data = await resp.json()
+      } catch (_) {}
+    }
+    const code = data?.code
+    const ok = code === 1 || code === 200
+    if (ok) {
+      ElMessage.success('密码已修改，请使用新密码登录')
+      pwdDialogVisible.value = false
+      resetPwdForm()
+    } else {
+      ElMessage.error(data?.msg || '修改失败')
+    }
+  } catch (_) {
+    ElMessage.error('网络错误')
+  } finally {
+    pwdSaving.value = false
+  }
+}
 const toMoney = (v) => (Number(v || 0)).toFixed(2)
 const walletFlows = ref([])
 const walletFlowPage = ref(1)
@@ -831,5 +931,9 @@ onMounted(() => {
   margin-top: 10px;
   display: flex;
   justify-content: flex-end;
+}
+.pwd-forgot-row {
+  text-align: right;
+  margin: -4px 0 8px;
 }
 </style>

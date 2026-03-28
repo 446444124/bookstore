@@ -10,6 +10,7 @@ public class MessageConstant {
     public static final String ACCOUNT_NOT_FOUND = "账号不存在";
     public static final String ALREADY_EXIST = "账号已存在";
     public static final String PHONE_EXIST = "手机号已存在";
+    public static final String EMAIL_EXIST = "该邮箱已被注册";
     public static final String BOOK_EXIST = "图书已存在";
     public static final String ACCOUNT_LOCKED = "账号被锁定";
     public static final String UNKNOWN_ERROR = "未知错误";
