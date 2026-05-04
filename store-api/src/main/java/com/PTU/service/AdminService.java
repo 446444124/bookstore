@@ -23,4 +23,11 @@ public interface AdminService extends IService<Admin> {
     PageResult pageQuery(AdminPageQueryDTO adminPageQueryDTO);
 
     void startOrStop(Integer status, Long id);
+
+    /**
+     * 修改员工：店长可改任意人；普通员工仅可改本人邮箱、手机、头像。
+     */
+    void updateEmployee(Admin admin);
+
+    boolean isCurrentStoreManager();
 }

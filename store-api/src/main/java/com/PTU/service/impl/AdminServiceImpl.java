@@ -2,14 +2,15 @@ package com.PTU.service.impl;
 
 import com.PTU.constant.MessageConstant;
 import com.PTU.constant.PasswordConstant;
+import com.PTU.constant.PositionConstant;
 import com.PTU.constant.StatusConstant;
+import com.PTU.context.BaseContext;
 import com.PTU.dto.AdminDTO;
 import com.PTU.dto.AdminLoginDTO;
 import com.PTU.dto.AdminPageQueryDTO;
-import com.PTU.dto.CategoryPageQueryDTO;
 import com.PTU.entity.Admin;
-import com.PTU.entity.Category;
 import com.PTU.exception.AccountLockedException;
+import com.PTU.exception.BaseException;
 import com.PTU.exception.AccountNotFoundException;
 import com.PTU.exception.PasswordErrorException;
 import com.PTU.mapper.AdminMapper;
@@ -67,6 +68,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminMapper, Admin> implements
      * @param
      */
     public void save(AdminDTO adminDTO) {
+        assertStoreManager();
         Admin admin = new Admin();
         //对象属性拷贝
         BeanUtils.copyProperties(adminDTO,admin);
@@ -85,6 +87,7 @@ public class AdminServiceImpl extends ServiceImpl<AdminMapper, Admin> implements
 
     //使用MyBatis-Plus内置分页
     public PageResult pageQuery(AdminPageQueryDTO adminPageQueryDTO) {
+        assertStoreManager();
         // 创建MyBatis-Plus分页对象
         Page<Admin> page = new Page<>(adminPageQueryDTO.getPage(), adminPageQueryDTO.getPageSize());
 
@@ -105,11 +108,60 @@ public class AdminServiceImpl extends ServiceImpl<AdminMapper, Admin> implements
 
     @Override
     public void startOrStop(Integer status, Long id) {
+        assertStoreManager();
         Admin admin =Admin.builder()
                 .status(status)
                 .employeeId(id)
                 .build();
         this.updateById(admin);
+    }
+
+    @Override
+    public void updateEmployee(Admin admin) {
+        if (admin == null || admin.getEmployeeId() == null) {
+            throw new BaseException("缺少员工信息");
+        }
+        Long targetId = admin.getEmployeeId();
+        Long currentId = BaseContext.getCurrentId();
+        Admin existing = this.getById(targetId);
+        if (existing == null) {
+            throw new BaseException(MessageConstant.ACCOUNT_NOT_FOUND);
+        }
+        boolean manager = isCurrentStoreManager();
+        boolean self = currentId != null && currentId.equals(targetId);
+        if (!self && !manager) {
+            throw new BaseException(MessageConstant.MANAGER_ONLY_EMPLOYEE_MANAGE);
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (self && !manager) {
+            Admin patch = Admin.builder()
+                    .employeeId(targetId)
+                    .email(admin.getEmail())
+                    .phone(admin.getPhone())
+                    .avatar(admin.getAvatar())
+                    .updateTime(now)
+                    .build();
+            this.updateById(patch);
+            return;
+        }
+        admin.setUpdateTime(now);
+        this.updateById(admin);
+    }
+
+    @Override
+    public boolean isCurrentStoreManager() {
+        Long id = BaseContext.getCurrentId();
+        if (id == null) {
+            return false;
+        }
+        Admin cur = this.getById(id);
+        return cur != null && PositionConstant.isStoreManager(cur.getPosition());
+    }
+
+    private void assertStoreManager() {
+        if (!isCurrentStoreManager()) {
+            throw new BaseException(MessageConstant.MANAGER_ONLY_EMPLOYEE_MANAGE);
+        }
     }
 
 }

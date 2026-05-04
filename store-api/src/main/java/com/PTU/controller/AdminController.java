@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/admin/admin")
@@ -48,6 +49,7 @@ public class AdminController {
         AdminLoginVO adminLoginVO = AdminLoginVO.builder()
                 .id(admin.getEmployeeId())
                 .token(token)
+                .position(admin.getPosition())
                 .build();
         return Result.success(adminLoginVO);
     }
@@ -78,8 +80,11 @@ public class AdminController {
     @PostMapping("/status/{status}")
     @ApiOperation("启用禁用员工账号")
     public Result startOrStop(@PathVariable Integer status, Long id) {
+        if (id == null) {
+            return Result.error("缺少员工 id");
+        }
         //不能禁用自己
-        if(id.equals(BaseContext.getCurrentId())){
+        if (Objects.equals(id, BaseContext.getCurrentId())) {
             return Result.error(MessageConstant.CANNOT_DISABLE_SELF);
         }
         log.info("启用禁用员工账号：{},{}", status, id);
@@ -91,6 +96,13 @@ public class AdminController {
     public Result<Admin> getById(@PathVariable Long id){
         log.info("根据id查询员工信息：{}", id);
         Admin admin = adminService.getById(id);
+        if (admin == null) {
+            return Result.error(MessageConstant.ACCOUNT_NOT_FOUND);
+        }
+        Long cur = BaseContext.getCurrentId();
+        if (!Objects.equals(id, cur) && !adminService.isCurrentStoreManager()) {
+            return Result.error(MessageConstant.MANAGER_ONLY_EMPLOYEE_MANAGE);
+        }
         // 对密码进行脱敏处理
         admin.setPassword("****");
         return Result.success(admin);
@@ -100,7 +112,7 @@ public class AdminController {
     @ApiOperation("修改员工信息")
     public Result update(@RequestBody Admin admin){
         log.info("修改员工信息：{}", admin);
-        adminService.updateById(admin);
+        adminService.updateEmployee(admin);
         return Result.success();
     }
 

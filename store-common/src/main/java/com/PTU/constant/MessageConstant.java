@@ -5,6 +5,8 @@ package com.PTU.constant;
  */
 public class MessageConstant {
     public static final String CANNOT_DISABLE_SELF = "不能禁用自己";
+    /** 非店长访问员工列表、新增员工、启停他人账号、查看或修改他人资料 */
+    public static final String MANAGER_ONLY_EMPLOYEE_MANAGE = "仅店长账号可进行员工管理";
     public static final String BOOK_ISBN_NULL = "图书ISBN不能为空";
     public static final String PASSWORD_ERROR = "密码错误";
     public static final String ACCOUNT_NOT_FOUND = "账号不存在";

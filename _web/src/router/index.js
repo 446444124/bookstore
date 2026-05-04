@@ -50,9 +50,14 @@ router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
   if (to.path.startsWith('/admin') && !token) {
     next('/login')
-  } else {
-    next()
+    return
   }
+  const pos = (localStorage.getItem('adminPosition') || '').trim()
+  if (to.path.startsWith('/admin/employees') && pos && pos !== '店长') {
+    next('/admin/dashboard')
+    return
+  }
+  next()
 })
 
 export default router

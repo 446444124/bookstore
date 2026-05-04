@@ -33,10 +33,15 @@ public class PayUtil {
     //private final String RETURN_URL = "http://localhost:5173/#/";
     private final String RETURN_URL = "http://localhost:8080/api/alipay/toSuccess";
     private AlipayClient alipayClient = null;
+
+    private AlipayClient newAlipayClient() {
+        return new DefaultAlipayClient(GATEWAY_URL, APP_ID, APP_PRIVATE_KEY, FORMAT, CHARSET, ALIPAY_PUBLIC_KEY, SIGN_TYPE);
+    }
+
     //支付宝官方提供的接口
     public String sendRequestToAlipay(String outTradeNo, BigDecimal totalAmount, String subject) throws AlipayApiException {
-        //获得初始化的AlipayClient
-        alipayClient = new DefaultAlipayClient(GATEWAY_URL, APP_ID, APP_PRIVATE_KEY, FORMAT, CHARSET, ALIPAY_PUBLIC_KEY, SIGN_TYPE);
+        //获得初始化的AlipayClient（保留成员变量兼容旧代码；query 等路径使用独立 client，避免未初始化）
+        alipayClient = newAlipayClient();
 
         //设置请求参数
         AlipayTradePagePayRequest alipayRequest = new AlipayTradePagePayRequest();
@@ -74,6 +79,7 @@ public class PayUtil {
 
     //    通过订单编号查询
     public String query(String id){
+        AlipayClient client = newAlipayClient();
         AlipayTradeQueryRequest request = new AlipayTradeQueryRequest();
         JSONObject bizContent = new JSONObject();
         bizContent.put("out_trade_no", id);
@@ -81,7 +87,7 @@ public class PayUtil {
         AlipayTradeQueryResponse response = null;
         String body=null;
         try {
-            response = alipayClient.execute(request);
+            response = client.execute(request);
             body = response.getBody();
         } catch (AlipayApiException e) {
             e.printStackTrace();

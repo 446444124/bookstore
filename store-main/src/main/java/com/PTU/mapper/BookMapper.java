@@ -10,4 +10,7 @@ import org.apache.ibatis.annotations.Update;
 public interface BookMapper extends BaseMapper<Book> {
     @Update("UPDATE book SET stock = stock - #{quantity} WHERE id = #{bookId} AND stock >= #{quantity}")
     int deductStock(@Param("bookId") Long bookId, @Param("quantity") Integer quantity);
+
+    @Update("UPDATE book SET stock = stock + #{quantity} WHERE id = #{bookId}")
+    int addStock(@Param("bookId") Long bookId, @Param("quantity") Integer quantity);
 }

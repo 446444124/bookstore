@@ -61,6 +61,9 @@
             <el-radio :label="1">立即送出</el-radio>
             <el-radio :label="0">选择具体时间</el-radio>
           </el-radio-group>
+          <div v-if="orderForm.deliveryWay === 1 && orderForm.deliveryStatus === 1" class="delivery-hint">
+            预计送达：提交订单后约 1 小时内（以系统记录时间为准）
+          </div>
         </el-form-item>
         <el-form-item label="预计送达时间" prop="estimatedDeliveryTime" v-if="orderForm.deliveryWay === 1 && orderForm.deliveryStatus === 0">
           <el-date-picker
@@ -503,6 +506,12 @@ onMounted(() => {
   text-align: center;
   padding: 24px;
   color: #606266;
+}
+.delivery-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.4;
 }
 .summary {
   display: flex;

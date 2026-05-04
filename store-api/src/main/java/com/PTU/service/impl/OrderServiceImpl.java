@@ -7,6 +7,7 @@ import com.PTU.entity.SecondHandOrder;
 import com.PTU.entity.WalletFlow;
 import com.PTU.exception.BaseException;
 import com.PTU.mapper.AdminOrderUnionMapper;
+import com.PTU.mapper.BookMapper;
 import com.PTU.mapper.OrderDetailMapper;
 import com.PTU.mapper.OrderMapper;
 import com.PTU.mapper.SecondHandListingMapper;
@@ -37,6 +38,8 @@ public class OrderServiceImpl implements OrderService {
     @Autowired
     private OrderMapper orderMapper;
 
+    @Autowired
+    private BookMapper bookMapper;
     @Autowired
     private OrderDetailMapper orderDetailMapper;
     @Autowired
@@ -184,6 +187,7 @@ public class OrderServiceImpl implements OrderService {
                 throw new BaseException(MessageConstant.ORDER_STATUS_ERROR);
             }
             String rejectReason = (reason == null || reason.trim().isEmpty()) ? "商家拒单" : reason.trim();
+            restoreStockFromOrderDetails(id);
             Orders upd = Orders.builder()
                     .id(id)
                     .status(Orders.CANCELLED)
@@ -279,6 +283,38 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public void approveReturn(String id) {
+        // 先处理 second_hand_order：与 orders 可能同号，先查 orders 会误退款且不恢复二手条目
+        SecondHandOrder sh = safeGetSecondHandById(id);
+        if (sh != null) {
+            if (!Orders.RETURN_REQUESTED.equals(sh.getStatus())) {
+                throw new BaseException(MessageConstant.ORDER_STATUS_ERROR);
+            }
+            if (sh.getUserId() == null || sh.getTotalAmount() == null || sh.getTotalAmount().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+                throw new BaseException("订单退款信息异常");
+            }
+            if (walletFlowMapper.countByBizNoAndType(sh.getId(), WalletFlow.TYPE_REFUND) > 0) {
+                throw new BaseException("该订单已退款入账");
+            }
+            userMapper.addWalletBalance(sh.getUserId(), sh.getTotalAmount());
+            walletFlowMapper.insert(WalletFlow.builder()
+                    .userId(sh.getUserId())
+                    .flowType(WalletFlow.TYPE_REFUND)
+                    .amount(sh.getTotalAmount())
+                    .bizNo(sh.getId())
+                    .remark("退货退款入钱包")
+                    .createTime(LocalDateTime.now())
+                    .build());
+            SecondHandOrder upd = SecondHandOrder.builder()
+                    .id(id)
+                    .status(Orders.REFUNDED)
+                    .payStatus(Orders.REFUND)
+                    .cancelTime(LocalDateTime.now().toString())
+                    .updateTime(LocalDateTime.now())
+                    .build();
+            secondHandOrderMapper.updateById(upd);
+            tryRelistSecondHand(sh.getListingId(), sh.getId());
+            return;
+        }
         Orders order = orderMapper.selectById(id);
         if (order != null) {
             if (!Orders.RETURN_REQUESTED.equals(order.getStatus())) {
@@ -299,6 +335,7 @@ public class OrderServiceImpl implements OrderService {
                     .remark("退货退款入钱包")
                     .createTime(LocalDateTime.now())
                     .build());
+            restoreStockFromOrderDetails(id);
             Orders upd = Orders.builder()
                     .id(id)
                     .status(Orders.REFUNDED)
@@ -313,45 +350,44 @@ public class OrderServiceImpl implements OrderService {
             }
             return;
         }
-        SecondHandOrder sh = safeGetSecondHandById(id);
-        if (sh == null) {
-            throw new BaseException(MessageConstant.ORDER_NOT_FOUND);
+        throw new BaseException(MessageConstant.ORDER_NOT_FOUND);
+    }
+
+    private void restoreStockFromOrderDetails(String orderId) {
+        if (orderId == null || orderId.isEmpty()) {
+            return;
         }
-        if (!Orders.RETURN_REQUESTED.equals(sh.getStatus())) {
-            throw new BaseException(MessageConstant.ORDER_STATUS_ERROR);
+        List<OrderDetail> lines = orderDetailMapper.selectList(
+                new LambdaQueryWrapper<OrderDetail>().eq(OrderDetail::getOrderId, orderId));
+        if (lines == null || lines.isEmpty()) {
+            return;
         }
-        if (sh.getUserId() == null || sh.getTotalAmount() == null || sh.getTotalAmount().compareTo(java.math.BigDecimal.ZERO) <= 0) {
-            throw new BaseException("订单退款信息异常");
-        }
-        if (walletFlowMapper.countByBizNoAndType(sh.getId(), WalletFlow.TYPE_REFUND) > 0) {
-            throw new BaseException("该订单已退款入账");
-        }
-        userMapper.addWalletBalance(sh.getUserId(), sh.getTotalAmount());
-        walletFlowMapper.insert(WalletFlow.builder()
-                .userId(sh.getUserId())
-                .flowType(WalletFlow.TYPE_REFUND)
-                .amount(sh.getTotalAmount())
-                .bizNo(sh.getId())
-                .remark("退货退款入钱包")
-                .createTime(LocalDateTime.now())
-                .build());
-        SecondHandOrder upd = SecondHandOrder.builder()
-                .id(id)
-                .status(Orders.REFUNDED)
-                .payStatus(Orders.REFUND)
-                .cancelTime(LocalDateTime.now().toString())
-                .updateTime(LocalDateTime.now())
-                .build();
-        secondHandOrderMapper.updateById(upd);
-        // 二手书订单退款通过：重新上架对应二手条目
-        if (sh.getListingId() != null) {
-            tryRelistSecondHand(sh.getListingId(), sh.getId());
+        for (OrderDetail d : lines) {
+            if (d.getBookId() == null || d.getQuantity() == null || d.getQuantity() <= 0) {
+                continue;
+            }
+            int n = bookMapper.addStock(d.getBookId(), d.getQuantity());
+            if (n == 0) {
+                log.warn("恢复库存未更新到行 bookId={} qty={} orderId={}", d.getBookId(), d.getQuantity(), orderId);
+            }
         }
     }
 
     private void tryRelistSecondHand(Long listingId, String orderId) {
+        if (orderId == null || orderId.isEmpty()) {
+            return;
+        }
         try {
-            secondHandListingMapper.relistAfterRefund(listingId, orderId);
+            int n = 0;
+            if (listingId != null) {
+                n = secondHandListingMapper.relistAfterRefund(listingId, orderId);
+            }
+            if (n == 0) {
+                n = secondHandListingMapper.relistSoldOrPendingByOrderId(orderId);
+            }
+            if (n == 0) {
+                log.warn("二手书退款后重上架影响0行 listingId={} orderId={}", listingId, orderId);
+            }
         } catch (Exception e) {
             // 不中断退款主流程；数据库缺列/缺表时让退款仍可完成
             log.warn("二手书退款后重上架失败 listingId={} orderId={}: {}", listingId, orderId, e.toString());
@@ -361,6 +397,21 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public void rejectReturn(String id, String reason) {
+        SecondHandOrder sh = safeGetSecondHandById(id);
+        if (sh != null) {
+            if (!Orders.RETURN_REQUESTED.equals(sh.getStatus())) {
+                throw new BaseException(MessageConstant.ORDER_STATUS_ERROR);
+            }
+            String rejectReason = (reason == null || reason.trim().isEmpty()) ? "商家驳回退货申请" : ("商家驳回退货：" + reason.trim());
+            SecondHandOrder upd = SecondHandOrder.builder()
+                    .id(id)
+                    .status(Orders.COMPLETED)
+                    .rejectionReason(rejectReason)
+                    .updateTime(LocalDateTime.now())
+                    .build();
+            secondHandOrderMapper.updateById(upd);
+            return;
+        }
         Orders order = orderMapper.selectById(id);
         if (order != null) {
             if (!Orders.RETURN_REQUESTED.equals(order.getStatus())) {
@@ -376,21 +427,7 @@ public class OrderServiceImpl implements OrderService {
             orderMapper.updateById(upd);
             return;
         }
-        SecondHandOrder sh = safeGetSecondHandById(id);
-        if (sh == null) {
-            throw new BaseException(MessageConstant.ORDER_NOT_FOUND);
-        }
-        if (!Orders.RETURN_REQUESTED.equals(sh.getStatus())) {
-            throw new BaseException(MessageConstant.ORDER_STATUS_ERROR);
-        }
-        String rejectReason = (reason == null || reason.trim().isEmpty()) ? "商家驳回退货申请" : ("商家驳回退货：" + reason.trim());
-        SecondHandOrder upd = SecondHandOrder.builder()
-                .id(id)
-                .status(Orders.COMPLETED)
-                .rejectionReason(rejectReason)
-                .updateTime(LocalDateTime.now())
-                .build();
-        secondHandOrderMapper.updateById(upd);
+        throw new BaseException(MessageConstant.ORDER_NOT_FOUND);
     }
 
     @Override

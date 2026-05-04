@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Consumer;
 
 @Slf4j
 @Service
@@ -128,6 +129,12 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
 
         BeanUtils.copyProperties(ordersSubmitDTO, orders);
         LocalDateTime now = LocalDateTime.now();
+        applyDefaultImmediateEstimatedDelivery(
+                orders.getDeliveryWay(),
+                orders.getDeliveryStatus(),
+                orders.getEstimatedDeliveryTime(),
+                orders::setEstimatedDeliveryTime,
+                now);
         orders.setOrderTime(now);
         orders.setCreateTime(now);
         orders.setUpdateTime(now);
@@ -211,6 +218,12 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
         BigDecimal totalAmount = listing.getSalePrice();
         BeanUtils.copyProperties(dto, sh);
         LocalDateTime now = LocalDateTime.now();
+        applyDefaultImmediateEstimatedDelivery(
+                sh.getDeliveryWay(),
+                sh.getDeliveryStatus(),
+                sh.getEstimatedDeliveryTime(),
+                sh::setEstimatedDeliveryTime,
+                now);
         sh.setOrderTime(now);
         sh.setCreateTime(now);
         sh.setUpdateTime(now);
@@ -314,6 +327,12 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
         if (discountAmount.compareTo(BigDecimal.ZERO) < 0) discountAmount = BigDecimal.ZERO;
 
         BeanUtils.copyProperties(dto, orders);
+        applyDefaultImmediateEstimatedDelivery(
+                orders.getDeliveryWay(),
+                orders.getDeliveryStatus(),
+                orders.getEstimatedDeliveryTime(),
+                orders::setEstimatedDeliveryTime,
+                now);
         orders.setId(generateOrderNo(userId));
         orders.setUserId(userId);
         orders.setOrderTime(now);
@@ -357,6 +376,28 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
                 .orderTime(orders.getOrderTime())
                 .orderAmount(orders.getTotalAmount())
                 .build();
+    }
+
+    /**
+     * 配送且为「立即送出」（或未传 deliveryStatus，兼容旧客户端）时，若未填写预计送达时间，则默认为下单时间后 1 小时。
+     * deliveryStatus=0（自选具体时间）且未传时间时不填充，由前端校验。
+     */
+    private void applyDefaultImmediateEstimatedDelivery(
+            Integer deliveryWay,
+            Integer deliveryStatus,
+            LocalDateTime estimatedDeliveryTime,
+            Consumer<LocalDateTime> setEstimated,
+            LocalDateTime orderTime) {
+        if (deliveryWay == null || deliveryWay != 1) {
+            return;
+        }
+        if (estimatedDeliveryTime != null) {
+            return;
+        }
+        if (deliveryStatus != null && deliveryStatus == 0) {
+            return;
+        }
+        setEstimated.accept(orderTime.plusHours(1));
     }
 
     private BigDecimal applyOfferDiscount(BigDecimal original, Integer discountType, BigDecimal discountValue) {
@@ -706,6 +747,30 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
         sb.append(part.trim());
     }
 
+    /**
+     * 按订单明细将库存加回（购物车/特惠等下单时已扣减的库存）。
+     */
+    private void restoreStockFromOrderDetails(String orderId) {
+        if (orderId == null || orderId.isEmpty()) {
+            return;
+        }
+        List<OrderDetail> lines = orderDetailMapper.selectList(
+                new LambdaQueryWrapper<OrderDetail>().eq(OrderDetail::getOrderId, orderId));
+        if (lines == null || lines.isEmpty()) {
+            return;
+        }
+        for (OrderDetail d : lines) {
+            if (d.getBookId() == null || d.getQuantity() == null || d.getQuantity() <= 0) {
+                continue;
+            }
+            int n = bookMapper.addStock(d.getBookId(), d.getQuantity());
+            if (n == 0) {
+                log.warn("恢复库存未更新到行 bookId={} qty={} orderId={}", d.getBookId(), d.getQuantity(), orderId);
+            }
+        }
+    }
+
+    @Transactional
     public void userCancelById(String id) {
         Long userId = BaseContext.getCurrentId();
         if (userId == null) {
@@ -716,9 +781,13 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Orders> implement
             if (!userId.equals(order.getUserId())) {
                 throw new BaseException(MessageConstant.ORDER_NOT_FOUND);
             }
+            if (Orders.CANCELLED.equals(order.getStatus())) {
+                throw new BaseException(MessageConstant.ORDER_STATUS_ERROR);
+            }
             if (order.getPayStatus() != null && order.getPayStatus() == Orders.PAID) {
                 throw new BaseException(MessageConstant.ORDER_STATUS_ERROR);
             }
+            restoreStockFromOrderDetails(id);
             Orders upd = Orders.builder()
                     .id(order.getId())
                     .status(Orders.CANCELLED)

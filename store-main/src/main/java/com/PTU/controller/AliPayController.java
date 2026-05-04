@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
@@ -107,17 +108,39 @@ public class AliPayController {
                         .build());
                 return "success";
             }
+            // 先查二手订单：与 orders 可能共用同形态 id，若先查 orders 会误更新普通订单并跳过二手单
+            SecondHandOrder shOrder = safeGetSecondHandOrder(outTradeNo);
+            if (shOrder != null) {
+                if (!"TRADE_SUCCESS".equals(tradeStatus) && !"TRADE_FINISHED".equals(tradeStatus)) {
+                    return "success";
+                }
+                if (!alipayTotalMatchesOrder(shOrder.getTotalAmount(), totalAmountStr)) {
+                    log.warn("支付宝异步通知金额与二手订单不一致 outTradeNo={} orderAmt={} notifyAmt={}",
+                            outTradeNo, shOrder.getTotalAmount(), totalAmountStr);
+                    return "failure";
+                }
+                if (Orders.isPaid(shOrder.getPayStatus())) {
+                    return "success";
+                }
+                SecondHandOrder shUpd = SecondHandOrder.builder()
+                        .id(shOrder.getId())
+                        .payStatus(Orders.PAID)
+                        .status(Orders.TO_BE_CONFIRMED)
+                        .payTime(LocalDateTime.now())
+                        .updateTime(LocalDateTime.now())
+                        .build();
+                secondHandOrderMapper.updateById(shUpd);
+                secondHandListingService.finalizeSoldAfterPaid(outTradeNo, shOrder.getUserId());
+                return "success";
+            }
             Orders order = orderMapper.selectById(outTradeNo);
             if (order != null) {
                 if (!"TRADE_SUCCESS".equals(tradeStatus) && !"TRADE_FINISHED".equals(tradeStatus)) {
                     return "success";
                 }
-                try {
-                    BigDecimal paid = new BigDecimal(totalAmountStr);
-                    if (order.getTotalAmount() != null && order.getTotalAmount().compareTo(paid) != 0) {
-                        return "failure";
-                    }
-                } catch (Exception e) {
+                if (!alipayTotalMatchesOrder(order.getTotalAmount(), totalAmountStr)) {
+                    log.warn("支付宝异步通知金额与订单不一致 outTradeNo={} orderAmt={} notifyAmt={}",
+                            outTradeNo, order.getTotalAmount(), totalAmountStr);
                     return "failure";
                 }
                 if (Orders.isPaid(order.getPayStatus())) {
@@ -134,35 +157,9 @@ public class AliPayController {
                 secondHandListingService.finalizeSoldAfterPaid(outTradeNo, order.getUserId());
                 return "success";
             }
-            SecondHandOrder shOrder = safeGetSecondHandOrder(outTradeNo);
-            if (shOrder == null) {
-                return "failure";
-            }
-            if (!"TRADE_SUCCESS".equals(tradeStatus) && !"TRADE_FINISHED".equals(tradeStatus)) {
-                return "success";
-            }
-            try {
-                BigDecimal paid = new BigDecimal(totalAmountStr);
-                if (shOrder.getTotalAmount() != null && shOrder.getTotalAmount().compareTo(paid) != 0) {
-                    return "failure";
-                }
-            } catch (Exception e) {
-                return "failure";
-            }
-            if (Orders.isPaid(shOrder.getPayStatus())) {
-                return "success";
-            }
-            SecondHandOrder shUpd = SecondHandOrder.builder()
-                    .id(shOrder.getId())
-                    .payStatus(Orders.PAID)
-                    .status(Orders.TO_BE_CONFIRMED)
-                    .payTime(LocalDateTime.now())
-                    .updateTime(LocalDateTime.now())
-                    .build();
-            secondHandOrderMapper.updateById(shUpd);
-            secondHandListingService.finalizeSoldAfterPaid(outTradeNo, shOrder.getUserId());
-            return "success";
+            return "failure";
         } catch (Exception e) {
+            log.warn("支付宝异步 notify 异常: {}", e.toString());
             return "failure";
         }
     }
@@ -181,6 +178,21 @@ public class AliPayController {
             log.warn("支付下单缺少订单号参数");
             return "<html><body><h3>缺少订单号参数</h3><p>请从下单页面重新发起支付。</p></body></html>";
         }
+        SecondHandOrder sh = safeGetSecondHandOrder(useId);
+        if (sh != null) {
+            if (Orders.isPaid(sh.getPayStatus())) {
+                log.warn("支付下单失败，订单已支付 id={}", useId);
+                return "<html><body><h3>订单已支付</h3></body></html>";
+            }
+            if (sh.getStatus() != null && sh.getStatus() != Orders.PENDING_PAYMENT) {
+                log.warn("支付下单失败，订单状态非待付款 id={}, status={}", useId, sh.getStatus());
+                return "<html><body><h3>订单状态异常</h3></body></html>";
+            }
+            if (sh.getTotalAmount() == null || sh.getTotalAmount().compareTo(BigDecimal.ZERO) <= 0) {
+                return "<html><body><h3>订单金额非法</h3></body></html>";
+            }
+            return alipayUtil.sendRequestToAlipay(sh.getId(), sh.getTotalAmount(), "Your books");
+        }
         Orders order = orderMapper.selectById(useId);
         if (order != null) {
             if (Orders.isPaid(order.getPayStatus())) {
@@ -196,23 +208,8 @@ public class AliPayController {
             }
             return alipayUtil.sendRequestToAlipay(order.getId(), order.getTotalAmount(), "Your books");
         }
-        SecondHandOrder sh = safeGetSecondHandOrder(useId);
-        if (sh == null) {
-            log.warn("支付下单失败，订单不存在 id={}", useId);
-            return "<html><body><h3>订单不存在</h3></body></html>";
-        }
-        if (Orders.isPaid(sh.getPayStatus())) {
-            log.warn("支付下单失败，订单已支付 id={}", useId);
-            return "<html><body><h3>订单已支付</h3></body></html>";
-        }
-        if (sh.getStatus() != null && sh.getStatus() != Orders.PENDING_PAYMENT) {
-            log.warn("支付下单失败，订单状态非待付款 id={}, status={}", useId, sh.getStatus());
-            return "<html><body><h3>订单状态异常</h3></body></html>";
-        }
-        if (sh.getTotalAmount() == null || sh.getTotalAmount().compareTo(BigDecimal.ZERO) <= 0) {
-            return "<html><body><h3>订单金额非法</h3></body></html>";
-        }
-        return alipayUtil.sendRequestToAlipay(sh.getId(), sh.getTotalAmount(), "Your books");
+        log.warn("支付下单失败，订单不存在 id={}", useId);
+        return "<html><body><h3>订单不存在</h3></body></html>";
     }
 
     //    当我们支付完成之后跳转这个请求并携带参数，我们将里面的订单id接收到，通过订单id查询订单信息，信息包括支付是否成功等
@@ -228,43 +225,71 @@ public class AliPayController {
                 String query = alipayUtil.query(out_trade_no);
                 if (query != null && !query.trim().isEmpty()) {
                     JSONObject jsonObject = JSONObject.parseObject(query);
-                    Object o = jsonObject.get("alipay_trade_query_response");
-                    if (o instanceof Map) {
-                        Map map = (Map) o;
-                        Object s = map.get("trade_status");
-                        if ("TRADE_SUCCESS".equals(s) || "TRADE_FINISHED".equals(s)) {
-                            Orders order = orderMapper.selectById(out_trade_no);
-                            if (order != null && !Orders.isPaid(order.getPayStatus())) {
-                                Orders upd = Orders.builder()
-                                        .id(order.getId())
-                                        .payStatus(Orders.PAID)
-                                        .status(Orders.TO_BE_CONFIRMED)
-                                        .payTime(LocalDateTime.now())
-                                        .updateTime(LocalDateTime.now())
-                                        .build();
-                                orderMapper.updateById(upd);
-                                secondHandListingService.finalizeSoldAfterPaid(out_trade_no, order.getUserId());
-                            }
+                    JSONObject resp = jsonObject.getJSONObject("alipay_trade_query_response");
+                    if (resp == null) {
+                        Object raw = jsonObject.get("alipay_trade_query_response");
+                        if (raw instanceof Map) {
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> m = (Map<String, Object>) raw;
+                            resp = new JSONObject(m);
+                        }
+                    }
+                    if (resp != null && "10000".equals(resp.getString("code"))) {
+                        String tradeStatus = resp.getString("trade_status");
+                        if ("TRADE_SUCCESS".equals(tradeStatus) || "TRADE_FINISHED".equals(tradeStatus)) {
                             SecondHandOrder sh = safeGetSecondHandOrder(out_trade_no);
-                            if (sh != null && !Orders.isPaid(sh.getPayStatus())) {
-                                SecondHandOrder shUpd = SecondHandOrder.builder()
-                                        .id(sh.getId())
-                                        .payStatus(Orders.PAID)
-                                        .status(Orders.TO_BE_CONFIRMED)
-                                        .payTime(LocalDateTime.now())
-                                        .updateTime(LocalDateTime.now())
-                                        .build();
-                                secondHandOrderMapper.updateById(shUpd);
-                                secondHandListingService.finalizeSoldAfterPaid(out_trade_no, sh.getUserId());
+                            if (sh != null) {
+                                if (!Orders.isPaid(sh.getPayStatus())) {
+                                    SecondHandOrder shUpd = SecondHandOrder.builder()
+                                            .id(sh.getId())
+                                            .payStatus(Orders.PAID)
+                                            .status(Orders.TO_BE_CONFIRMED)
+                                            .payTime(LocalDateTime.now())
+                                            .updateTime(LocalDateTime.now())
+                                            .build();
+                                    secondHandOrderMapper.updateById(shUpd);
+                                    secondHandListingService.finalizeSoldAfterPaid(out_trade_no, sh.getUserId());
+                                }
+                            } else {
+                                Orders order = orderMapper.selectById(out_trade_no);
+                                if (order != null && !Orders.isPaid(order.getPayStatus())) {
+                                    Orders upd = Orders.builder()
+                                            .id(order.getId())
+                                            .payStatus(Orders.PAID)
+                                            .status(Orders.TO_BE_CONFIRMED)
+                                            .payTime(LocalDateTime.now())
+                                            .updateTime(LocalDateTime.now())
+                                            .build();
+                                    orderMapper.updateById(upd);
+                                    secondHandListingService.finalizeSoldAfterPaid(out_trade_no, order.getUserId());
+                                }
                             }
                         }
                     }
                 }
             }
-        } catch (Exception ignore) {}
+        } catch (Exception e) {
+            log.warn("支付同步回转 toSuccess 处理异常 out_trade_no={}: {}", out_trade_no, e.toString());
+        }
         HttpHeaders headers = new HttpHeaders();
         headers.setLocation(URI.create(paySuccessPageUrl));
         return new ResponseEntity<>(headers, HttpStatus.FOUND);
+    }
+
+    /**
+     * 与下单页传给支付宝的金额一致（保留两位），避免特惠折扣等产生的 scale 与异步 total_amount 字符串严格不相等导致验单失败。
+     */
+    private static boolean alipayTotalMatchesOrder(BigDecimal orderTotal, String totalAmountStr) {
+        if (orderTotal == null || totalAmountStr == null || totalAmountStr.trim().isEmpty()) {
+            return false;
+        }
+        try {
+            BigDecimal paid = new BigDecimal(totalAmountStr.trim()).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal exp = orderTotal.setScale(2, RoundingMode.HALF_UP);
+            return exp.compareTo(paid) == 0;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private SecondHandOrder safeGetSecondHandOrder(String id) {

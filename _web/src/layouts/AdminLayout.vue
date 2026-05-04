@@ -29,7 +29,7 @@
         <el-menu-item index="/admin/orders/return-review">
           <span class="menu-with-dot">退货申请<span v-if="showDot(7)" class="menu-badge">{{ badgeText(7) }}</span></span>
         </el-menu-item>
-        <el-menu-item index="/admin/employees">员工管理</el-menu-item>
+        <el-menu-item v-if="isStoreManagerAuth()" index="/admin/employees">员工管理</el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
@@ -66,7 +66,7 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { http } from '../api/http'
-import { useAuth, clearAuth } from '../store/auth'
+import { useAuth, clearAuth, isStoreManagerAuth, setAuth } from '../store/auth'
 import { useRouter } from 'vue-router'
 const route = useRoute()
 const active = computed(() => route.path)
@@ -132,6 +132,9 @@ onMounted(async () => {
     const resp = await http(`/admin/admin/${auth.userId}`)
     if (resp && resp.code === 1) {
       user.value = resp.data
+      if (auth.token) {
+        setAuth(auth.token, auth.userId, user.value?.position || '')
+      }
       const u = user.value
       if (u?.avatar) avatarSrc.value = u.avatar
       else if (u?.avatarUrl) avatarSrc.value = u.avatarUrl

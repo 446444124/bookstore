@@ -56,7 +56,7 @@ const onSubmit = () => {
         }
       })
       if (resp && resp.code === 1 && resp.data && resp.data.token) {
-        setAuth(resp.data.token, resp.data.id)
+        setAuth(resp.data.token, resp.data.id, resp.data.position)
         ElMessage.success('登录成功')
         router.push('/admin')
       } else {

@@ -12,4 +12,6 @@ import lombok.NoArgsConstructor;
 public class AdminLoginVO {
     private Long id;
     private String token;
+    /** 岗位（如「店长」），用于前端菜单与路由权限展示 */
+    private String position;
 }
